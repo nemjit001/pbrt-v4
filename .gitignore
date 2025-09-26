@@ -1,8 +1,13 @@
+# IDE folders
+.idea/
+
+# Build folders
+build/
+src/build/
+
+# Misc
 *~
 .#*
-#*#
-src/build
 .DS_Store
 .ipynb_checkpoints/
-build/
 .cache/
