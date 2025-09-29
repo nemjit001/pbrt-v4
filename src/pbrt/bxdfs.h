@@ -1131,6 +1131,34 @@ class NormalizedFresnelBxDF {
     Float eta;
 };
 
+class WeidlichWilkieBxDF {
+public:
+    WeidlichWilkieBxDF() = default;
+
+    PBRT_CPU_GPU
+    SampledSpectrum f(Vector3f wo, Vector3f wi, TransportMode mode) const;
+
+    PBRT_CPU_GPU
+    BSDFSample Sample_f(Vector3f wo, Float uc, Point2f u, TransportMode mode, BxDFReflTransFlags sampleFlags) const;
+
+    PBRT_CPU_GPU
+    Float PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDFReflTransFlags sampleFlags) const;
+
+    PBRT_CPU_GPU
+    static constexpr const char *Name() { return "WeidlichWilkieBxDF"; }
+
+    std::string ToString() const;
+
+    PBRT_CPU_GPU
+    void Regularize();
+
+    PBRT_CPU_GPU
+    BxDFFlags Flags() const;
+
+private:
+    // List of participating layers
+};
+
 PBRT_CPU_GPU inline SampledSpectrum BxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
     auto f = [&](auto ptr) -> SampledSpectrum { return ptr->f(wo, wi, mode); };
     return Dispatch(f);

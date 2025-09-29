@@ -1169,4 +1169,33 @@ std::string BxDF::ToString() const {
 template class LayeredBxDF<DielectricBxDF, DiffuseBxDF, true>;
 template class LayeredBxDF<DielectricBxDF, ConductorBxDF, true>;
 
+PBRT_CPU_GPU
+SampledSpectrum WeidlichWilkieBxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
+    return SampledSpectrum();
+}
+
+PBRT_CPU_GPU
+BSDFSample WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, Point2f u, TransportMode mode, BxDFReflTransFlags sampleFlags) const {
+    return BSDFSample();
+}
+
+PBRT_CPU_GPU
+Float WeidlichWilkieBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDFReflTransFlags sampleFlags) const {
+    return 0.0;
+}
+
+std::string WeidlichWilkieBxDF::ToString() const {
+    return StringPrintf("[WeidlichWilkieBxDF]");
+}
+
+PBRT_CPU_GPU
+void WeidlichWilkieBxDF::Regularize() {
+    //
+}
+
+PBRT_CPU_GPU
+BxDFFlags WeidlichWilkieBxDF::Flags() const {
+    return BxDFFlags::Unset;
+}
+
 }  // namespace pbrt
