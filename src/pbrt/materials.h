@@ -891,6 +891,45 @@ class MeasuredMaterial {
     const MeasuredBxDFData *brdf;
 };
 
+class WeidlichWilkieMaterial {
+public:
+    using BxDF = WeidlichWilkieBxDF;
+    using BSSRDF = void;
+
+    static WeidlichWilkieMaterial *Create(const TextureParameterDictionary &parameters,
+                                          Image *normalMap, const FileLoc *loc,
+                                          Allocator alloc);
+
+    WeidlichWilkieMaterial() = default;
+
+    static const char *Name() { return "WeidlichWilkieMaterial"; }
+
+    template <typename TextureEvaluator>
+    PBRT_CPU_GPU
+    WeidlichWilkieBxDF GetBxDF(TextureEvaluator texEval, MaterialEvalContext ctx, SampledWavelengths &lambda) const {
+        return WeidlichWilkieBxDF(); // FIXME(nemjit001): implement this
+    }
+
+    PBRT_CPU_GPU
+    FloatTexture GetDisplacement() const { return displacement; }
+
+    PBRT_CPU_GPU
+    const Image *GetNormalMap() const { return normalMap; }
+
+    template <typename TextureEvaluator>
+    PBRT_CPU_GPU
+    bool CanEvaluateTextures(TextureEvaluator texEval) const { return true; }
+
+    PBRT_CPU_GPU
+    static constexpr bool HasSubsurfaceScattering() { return false; }
+
+    std::string ToString() const;
+
+private:
+    FloatTexture displacement;
+    Image* normalMap;
+};
+
 // Material Inline Method Definitions
 template <typename TextureEvaluator>
 inline BSDF Material::GetBSDF(TextureEvaluator texEval, MaterialEvalContext ctx,

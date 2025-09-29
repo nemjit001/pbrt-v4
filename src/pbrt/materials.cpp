@@ -620,6 +620,16 @@ MeasuredMaterial *MeasuredMaterial::Create(const TextureParameterDictionary &par
     return alloc.new_object<MeasuredMaterial>(filename, displacement, normalMap, alloc);
 }
 
+std::string WeidlichWilkieMaterial::ToString() const {
+    return "[WeidlichWilkieMaterial]"; // FIXME(nemjit001): Also return material layer stack
+}
+
+WeidlichWilkieMaterial *WeidlichWilkieMaterial::Create(const TextureParameterDictionary &parameters,
+                                                       Image *normalMap, const FileLoc *loc,
+                                                       Allocator alloc) {
+    return alloc.new_object<WeidlichWilkieMaterial>();
+}
+
 std::string Material::ToString() const {
     if (!ptr())
         return "(nullptr)";
@@ -679,6 +689,9 @@ Material Material::Create(const std::string &name,
                           "the \"mix\" material.", materialNames[i]);
         }
         material = MixMaterial::Create(materials, parameters, loc, alloc);
+    }
+    else if (name == "weidlich-wilkie") {
+        material = WeidlichWilkieMaterial::Create(parameters, normalMap, loc, alloc);
     } else
         ErrorExit(loc, "%s: material type unknown.", name);
 
