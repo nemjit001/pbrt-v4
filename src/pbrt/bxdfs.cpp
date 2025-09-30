@@ -1162,24 +1162,36 @@ SampledSpectrum BxDF::rho(pstd::span<const Point2f> u1, pstd::span<const Float> 
 }
 
 WeidlichWilkieBxDF::WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers)
-    : scratch(std::move(scratch)), layers(layers) {
+    : scratch(std::move(scratch)), layers(std::move(layers)) {
     //
 }
 
 
 PBRT_CPU_GPU
 SampledSpectrum WeidlichWilkieBxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
-    return SampledSpectrum();
+    if (layers.empty()) {
+        return {};
+    }
+
+    return layers[0].f(wo, wi, mode);
 }
 
 PBRT_CPU_GPU
-BSDFSample WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, Point2f u, TransportMode mode, BxDFReflTransFlags sampleFlags) const {
-    return BSDFSample();
+pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, Point2f u, TransportMode mode, BxDFReflTransFlags sampleFlags) const {
+    if (layers.empty()) {
+        return {};
+    }
+
+    return layers[0].Sample_f(wo, uc, u, mode, sampleFlags);
 }
 
 PBRT_CPU_GPU
 Float WeidlichWilkieBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDFReflTransFlags sampleFlags) const {
-    return 0.0;
+    if (layers.empty()) {
+        return 0.0;
+    }
+
+    return layers[0].PDF(wo, wi, mode, sampleFlags);
 }
 
 std::string WeidlichWilkieBxDF::ToString() const {
@@ -1201,7 +1213,7 @@ void WeidlichWilkieBxDF::Regularize() {
 
 PBRT_CPU_GPU
 BxDFFlags WeidlichWilkieBxDF::Flags() const {
-    return BxDFFlags::Unset;
+    return BxDFFlags::All; // TODO(nemjit001): Check if this should be constructed from BxDF layers
 }
 
 std::string BxDF::ToString() const {
