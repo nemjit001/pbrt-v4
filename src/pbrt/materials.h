@@ -908,12 +908,28 @@ public:
     template <typename TextureEvaluator>
     PBRT_CPU_GPU
     WeidlichWilkieBxDF GetBxDF(TextureEvaluator texEval, MaterialEvalContext ctx, SampledWavelengths &lambda) const {
+        ScratchBuffer scratch; // Scratch buffer used to maintain allocations of BxDFs in lambda
+        auto getBxDF = [&](auto mtl) -> pbrt::BxDF {
+            using ConcreteMaterial = typename std::remove_reference_t<decltype(*mtl)>;
+            using ConcreteBxDF = typename ConcreteMaterial::BxDF;
+
+            if constexpr (std::is_same_v<ConcreteBxDF, void>) {
+                return {};
+            }
+            else {
+                ConcreteBxDF* bxdf = scratch.Alloc<ConcreteBxDF>();
+                *bxdf = mtl->GetBxDF(texEval, ctx, lambda);
+                return bxdf;
+            }
+        };
+
+        // Get BxDF impl for each material in layer, may be nullptr, should be checked in BxDF impl
         pstd::vector<pbrt::BxDF> bxdfs; bxdfs.reserve(materials.size());
-        for (auto const& material : materials) {
-            // TODO(nemjit001): Get BxDF from material ptr impl & store in list for weidlich-wilkie BxDF
+        for (auto material : materials) {
+            bxdfs.push_back(material.DispatchCPU(getBxDF));
         }
 
-        return WeidlichWilkieBxDF(bxdfs);
+        return WeidlichWilkieBxDF(scratch, bxdfs);
     }
 
     PBRT_CPU_GPU

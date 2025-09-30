@@ -1161,8 +1161,8 @@ SampledSpectrum BxDF::rho(pstd::span<const Point2f> u1, pstd::span<const Float> 
     return r / (Pi * uc.size());
 }
 
-WeidlichWilkieBxDF::WeidlichWilkieBxDF(pstd::vector<BxDF> layers)
-    : layers(layers) {
+WeidlichWilkieBxDF::WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers)
+    : scratch(std::move(scratch)), layers(layers) {
     //
 }
 
