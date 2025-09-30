@@ -1136,6 +1136,9 @@ public:
     WeidlichWilkieBxDF() = default;
 
     PBRT_CPU_GPU
+    WeidlichWilkieBxDF(pstd::vector<BxDF> layers);
+
+    PBRT_CPU_GPU
     SampledSpectrum f(Vector3f wo, Vector3f wi, TransportMode mode) const;
 
     PBRT_CPU_GPU
@@ -1156,7 +1159,7 @@ public:
     BxDFFlags Flags() const;
 
 private:
-    // List of participating layers
+    pstd::vector<BxDF> layers;
 };
 
 PBRT_CPU_GPU inline SampledSpectrum BxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {

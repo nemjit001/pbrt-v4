@@ -620,14 +620,44 @@ MeasuredMaterial *MeasuredMaterial::Create(const TextureParameterDictionary &par
     return alloc.new_object<MeasuredMaterial>(filename, displacement, normalMap, alloc);
 }
 
+WeidlichWilkieMaterial::WeidlichWilkieMaterial(FloatTexture displacement, Image* normalMap,
+                                               pstd::vector<Material> const& materials)
+    : displacement(displacement), normalMap(normalMap), materials(materials) {
+    //
+}
+
 std::string WeidlichWilkieMaterial::ToString() const {
-    return "[WeidlichWilkieMaterial]"; // FIXME(nemjit001): Also return material layer stack
+    std::string repr = StringPrintf("[WeidlichWilkieMaterial displacement: %s normalMap: %s layers: %d",
+        displacement, normalMap ? normalMap->ToString() : "(nullptr)", materials.size());
+
+    for (auto const& material : materials) {
+        repr += " " + material.ToString();
+    } repr += "]";
+
+    return repr;
 }
 
 WeidlichWilkieMaterial *WeidlichWilkieMaterial::Create(const TextureParameterDictionary &parameters,
-                                                       Image *normalMap, const FileLoc *loc,
-                                                       Allocator alloc) {
-    return alloc.new_object<WeidlichWilkieMaterial>();
+                                                       Image *normalMap, std::map<std::string, Material> &namedMaterials,
+                                                       const FileLoc *loc, Allocator alloc) {
+    // Build out a list of materials from either regular or named materials.
+    pstd::vector<Material> materials;
+    std::vector<std::string> const materialNames = parameters.GetStringArray("layers");
+    for (auto const& name : materialNames) {
+        auto iter = namedMaterials.find(name);
+        Material material = nullptr;
+        if (iter == namedMaterials.end()) {
+            material = Material::Create(name, parameters, normalMap, namedMaterials, loc, alloc);
+        } else {
+            material = iter->second;
+        }
+
+        materials.push_back(material);
+    }
+
+    // Create new weidlich-wilkie material
+    FloatTexture displacement = parameters.GetFloatTextureOrNull("displacement", alloc);
+    return alloc.new_object<WeidlichWilkieMaterial>(displacement, normalMap, materials);
 }
 
 std::string Material::ToString() const {
@@ -690,9 +720,9 @@ Material Material::Create(const std::string &name,
         }
         material = MixMaterial::Create(materials, parameters, loc, alloc);
     }
-    else if (name == "weidlich-wilkie") {
-        material = WeidlichWilkieMaterial::Create(parameters, normalMap, loc, alloc);
-    } else
+    else if (name == "weidlich-wilkie")
+        material = WeidlichWilkieMaterial::Create(parameters, normalMap, namedMaterials, loc, alloc);
+    else
         ErrorExit(loc, "%s: material type unknown.", name);
 
     if (!material)

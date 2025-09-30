@@ -1161,13 +1161,11 @@ SampledSpectrum BxDF::rho(pstd::span<const Point2f> u1, pstd::span<const Float> 
     return r / (Pi * uc.size());
 }
 
-std::string BxDF::ToString() const {
-    auto toStr = [](auto ptr) { return ptr->ToString(); };
-    return DispatchCPU(toStr);
+WeidlichWilkieBxDF::WeidlichWilkieBxDF(pstd::vector<BxDF> layers)
+    : layers(layers) {
+    //
 }
 
-template class LayeredBxDF<DielectricBxDF, DiffuseBxDF, true>;
-template class LayeredBxDF<DielectricBxDF, ConductorBxDF, true>;
 
 PBRT_CPU_GPU
 SampledSpectrum WeidlichWilkieBxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
@@ -1197,5 +1195,13 @@ PBRT_CPU_GPU
 BxDFFlags WeidlichWilkieBxDF::Flags() const {
     return BxDFFlags::Unset;
 }
+
+std::string BxDF::ToString() const {
+    auto toStr = [](auto ptr) { return ptr->ToString(); };
+    return DispatchCPU(toStr);
+}
+
+template class LayeredBxDF<DielectricBxDF, DiffuseBxDF, true>;
+template class LayeredBxDF<DielectricBxDF, ConductorBxDF, true>;
 
 }  // namespace pbrt

@@ -897,17 +897,23 @@ public:
     using BSSRDF = void;
 
     static WeidlichWilkieMaterial *Create(const TextureParameterDictionary &parameters,
-                                          Image *normalMap, const FileLoc *loc,
-                                          Allocator alloc);
+                                          Image *normalMap, std::map<std::string, Material> &namedMaterials,
+                                          const FileLoc *loc, Allocator alloc);
 
-    WeidlichWilkieMaterial() = default;
+    WeidlichWilkieMaterial(FloatTexture displacement, Image *normalMap,
+                           pstd::vector<Material> const& materials);
 
     static const char *Name() { return "WeidlichWilkieMaterial"; }
 
     template <typename TextureEvaluator>
     PBRT_CPU_GPU
     WeidlichWilkieBxDF GetBxDF(TextureEvaluator texEval, MaterialEvalContext ctx, SampledWavelengths &lambda) const {
-        return WeidlichWilkieBxDF(); // FIXME(nemjit001): implement this
+        pstd::vector<pbrt::BxDF> bxdfs; bxdfs.reserve(materials.size());
+        for (auto const& material : materials) {
+            // TODO(nemjit001): Get BxDF from material ptr impl & store in list for weidlich-wilkie BxDF
+        }
+
+        return WeidlichWilkieBxDF(bxdfs);
     }
 
     PBRT_CPU_GPU
@@ -928,6 +934,7 @@ public:
 private:
     FloatTexture displacement;
     Image* normalMap;
+    pstd::vector<Material> materials;
 };
 
 // Material Inline Method Definitions
