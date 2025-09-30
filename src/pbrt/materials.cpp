@@ -629,7 +629,6 @@ WeidlichWilkieMaterial::WeidlichWilkieMaterial(FloatTexture displacement, Image*
 std::string WeidlichWilkieMaterial::ToString() const {
     std::string repr = StringPrintf("[WeidlichWilkieMaterial displacement: %s normalMap: %s layers: %d",
         displacement, normalMap ? normalMap->ToString() : "(nullptr)", materials.size());
-
     for (auto const& material : materials) {
         repr += " " + material.ToString();
     } repr += "]";

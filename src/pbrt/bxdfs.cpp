@@ -1183,12 +1183,20 @@ Float WeidlichWilkieBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDF
 }
 
 std::string WeidlichWilkieBxDF::ToString() const {
-    return StringPrintf("[WeidlichWilkieBxDF]");
+    std::string repr = "[WeidlichWilkieBxDF";
+    for (auto const& bxdf : layers) {
+        repr += " " + bxdf.ToString();
+    }
+    repr += "]";
+
+    return repr;
 }
 
 PBRT_CPU_GPU
 void WeidlichWilkieBxDF::Regularize() {
-    //
+    for (auto& bxdf : layers) {
+        bxdf.Regularize();
+    }
 }
 
 PBRT_CPU_GPU
