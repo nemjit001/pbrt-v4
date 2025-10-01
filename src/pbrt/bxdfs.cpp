@@ -1162,7 +1162,7 @@ SampledSpectrum BxDF::rho(pstd::span<const Point2f> u1, pstd::span<const Float> 
 }
 
 WeidlichWilkieBxDF::WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers, pstd::vector<Float> weights,
-                                       pstd::vector<Float> depths, pstd::vector<Spectrum> absorptions)
+                                       pstd::vector<Float> depths, pstd::vector<SampledSpectrum> absorptions)
     : scratch(std::move(scratch)), layers(std::move(layers)), weights(std::move(weights)),
       depths(std::move(depths)), absorptions(std::move(absorptions)) {
     //
@@ -1177,9 +1177,9 @@ SampledSpectrum WeidlichWilkieBxDF::f(Vector3f wo, Vector3f wi, TransportMode mo
 
     SampledSpectrum composite{};
     for (size_t i = 0; i < layers.size(); i++) {
-        Float G = 0.0;
-        SampledSpectrum T12{};
-        SampledSpectrum T21{};
+        Float G = 1.0;
+        SampledSpectrum T12{ 1.0 };
+        SampledSpectrum T21{ 1.0 };
         composite = layers[i].f(wo, wi, mode) + T12 * composite * a(absorptions[i], depths[i], wo, wi) * t(G, T21);
     }
 
@@ -1213,9 +1213,9 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
         }
 
         // Do weidlich-wilkie eval
-        Float G = 0.0;
-        SampledSpectrum T12{};
-        SampledSpectrum T21{};
+        Float G = 1.0;
+        SampledSpectrum T12{ 1.0 };
+        SampledSpectrum T21{ 1.0 };
         composite = sample->f + T12 * composite * a(absorptions[i], depths[i], wo, wi) * t(G, T21);
 
         // Update PDF & flags

@@ -1137,7 +1137,7 @@ public:
 
     PBRT_CPU_GPU
     WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers, pstd::vector<Float> weights,
-                       pstd::vector<Float> depths, pstd::vector<Spectrum> absorptions);
+                       pstd::vector<Float> depths, pstd::vector<SampledSpectrum> absorptions);
 
     PBRT_CPU_GPU
     SampledSpectrum f(Vector3f wo, Vector3f wi, TransportMode mode) const;
@@ -1160,7 +1160,9 @@ public:
     BxDFFlags Flags() const;
 
 private:
-    SampledSpectrum a(Spectrum alpha, Float depth, Vector3f wo, Vector3f wi) const { return {}; }
+    SampledSpectrum a(SampledSpectrum alpha, Float depth, Vector3f wo, Vector3f wi) const {
+        return SampledSpectrum(1);
+    }
 
     SampledSpectrum t(Float G, SampledSpectrum T21) const { return SampledSpectrum(1 - G) + T21 * G; }
 
@@ -1169,7 +1171,7 @@ private:
     pstd::vector<BxDF> layers;
     pstd::vector<Float> weights;
     pstd::vector<Float> depths;
-    pstd::vector<Spectrum> absorptions;
+    pstd::vector<SampledSpectrum> absorptions;
 };
 
 PBRT_CPU_GPU inline SampledSpectrum BxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {

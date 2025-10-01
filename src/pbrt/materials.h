@@ -924,13 +924,15 @@ public:
             }
         };
 
-        // Get BxDF impl for each material in layer, may be nullptr, should be checked in BxDF impl
+        // Get BxDF impl & absorption spectrum for each material in layer, may be nullptr, should be checked in BxDF impl
         pstd::vector<pbrt::BxDF> bxdfs; bxdfs.reserve(materials.size());
-        for (auto const& material : materials) {
-            bxdfs.push_back(material.DispatchCPU(getBxDF));
+        pstd::vector<SampledSpectrum> sampledAbsorptions{}; sampledAbsorptions.reserve(materials.size());
+        for (size_t i = 0; i < materials.size(); i++) {
+            bxdfs.push_back(materials[i].DispatchCPU(getBxDF));
+            sampledAbsorptions.push_back(absorptions[i].Sample(lambda));
         }
 
-        return WeidlichWilkieBxDF(scratch, bxdfs, weights, depths, absorptions);
+        return WeidlichWilkieBxDF(scratch, bxdfs, weights, depths, sampledAbsorptions);
     }
 
     PBRT_CPU_GPU
