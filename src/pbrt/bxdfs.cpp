@@ -1176,9 +1176,11 @@ SampledSpectrum WeidlichWilkieBxDF::f(Vector3f wo, Vector3f wi, TransportMode mo
     }
 
     SampledSpectrum composite{};
-    for (auto const& layer : layers) {
-        // TODO(nemjit001): Actual weidlich-wilkie eval w/ T12, a, t term
-        composite = layer.f(wo, wi, mode);
+    for (size_t i = 0; i < layers.size(); i++) {
+        Float G = 0.0;
+        SampledSpectrum T12{};
+        SampledSpectrum T21{};
+        composite = layers[i].f(wo, wi, mode) + T12 * composite * a(absorptions[i], depths[i], wo, wi) * t(G, T21);
     }
 
     return composite;
@@ -1211,8 +1213,10 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
         }
 
         // Do weidlich-wilkie eval
-        // FIXME(nemjit001): Actually implement this using the recursive method from the paper :)
-        composite = sample->f;
+        Float G = 0.0;
+        SampledSpectrum T12{};
+        SampledSpectrum T21{};
+        composite = sample->f + T12 * composite * a(absorptions[i], depths[i], wo, wi) * t(G, T21);
 
         // Update PDF & flags
         pdf += weights[i] * sample->pdf;

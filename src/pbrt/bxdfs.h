@@ -1160,6 +1160,11 @@ public:
     BxDFFlags Flags() const;
 
 private:
+    SampledSpectrum a(Spectrum alpha, Float depth, Vector3f wo, Vector3f wi) const { return {}; }
+
+    SampledSpectrum t(Float G, SampledSpectrum T21) const { return SampledSpectrum(1 - G) + T21 * G; }
+
+private:
     ScratchBuffer scratch; // Needed to maintain BxDF ptr lifetime
     pstd::vector<BxDF> layers;
     pstd::vector<Float> weights;
