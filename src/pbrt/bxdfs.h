@@ -1136,7 +1136,8 @@ public:
     WeidlichWilkieBxDF() = default;
 
     PBRT_CPU_GPU
-    WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers);
+    WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers, pstd::vector<Float> weights,
+                       pstd::vector<Float> depths, pstd::vector<Spectrum> absorptions);
 
     PBRT_CPU_GPU
     SampledSpectrum f(Vector3f wo, Vector3f wi, TransportMode mode) const;
@@ -1161,6 +1162,9 @@ public:
 private:
     ScratchBuffer scratch; // Needed to maintain BxDF ptr lifetime
     pstd::vector<BxDF> layers;
+    pstd::vector<Float> weights;
+    pstd::vector<Float> depths;
+    pstd::vector<Spectrum> absorptions;
 };
 
 PBRT_CPU_GPU inline SampledSpectrum BxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {

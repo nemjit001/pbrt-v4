@@ -901,7 +901,8 @@ public:
                                           const FileLoc *loc, Allocator alloc);
 
     WeidlichWilkieMaterial(FloatTexture displacement, Image *normalMap,
-                           pstd::vector<Material> const& materials);
+                           pstd::vector<Material> const& materials, pstd::vector<Float> const& weights,
+                           pstd::vector<Float> const& depths, pstd::vector<Spectrum> const& absorptions);
 
     static const char *Name() { return "WeidlichWilkieMaterial"; }
 
@@ -925,11 +926,11 @@ public:
 
         // Get BxDF impl for each material in layer, may be nullptr, should be checked in BxDF impl
         pstd::vector<pbrt::BxDF> bxdfs; bxdfs.reserve(materials.size());
-        for (auto material : materials) {
+        for (auto const& material : materials) {
             bxdfs.push_back(material.DispatchCPU(getBxDF));
         }
 
-        return WeidlichWilkieBxDF(scratch, bxdfs);
+        return WeidlichWilkieBxDF(scratch, bxdfs, weights, depths, absorptions);
     }
 
     PBRT_CPU_GPU
@@ -951,6 +952,9 @@ private:
     FloatTexture displacement;
     Image* normalMap;
     pstd::vector<Material> materials;
+    pstd::vector<Float> weights;
+    pstd::vector<Float> depths;
+    pstd::vector<Spectrum> absorptions;
 };
 
 // Material Inline Method Definitions

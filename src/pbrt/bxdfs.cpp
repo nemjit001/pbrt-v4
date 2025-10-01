@@ -1161,8 +1161,10 @@ SampledSpectrum BxDF::rho(pstd::span<const Point2f> u1, pstd::span<const Float> 
     return r / (Pi * uc.size());
 }
 
-WeidlichWilkieBxDF::WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers)
-    : scratch(std::move(scratch)), layers(std::move(layers)) {
+WeidlichWilkieBxDF::WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers, pstd::vector<Float> weights,
+                                       pstd::vector<Float> depths, pstd::vector<Spectrum> absorptions)
+    : scratch(std::move(scratch)), layers(std::move(layers)), weights(std::move(weights)),
+      depths(std::move(depths)), absorptions(std::move(absorptions)) {
     //
 }
 
@@ -1191,7 +1193,11 @@ Float WeidlichWilkieBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDF
         return 0.0;
     }
 
-    return layers[0].PDF(wo, wi, mode, sampleFlags);
+    Float compositePDF = 0.0F;
+    for (size_t i = 0; i < layers.size(); i++) {
+        compositePDF += weights[i] * layers[i].PDF(wo, wi, mode, sampleFlags);
+    }
+    return compositePDF;
 }
 
 std::string WeidlichWilkieBxDF::ToString() const {
