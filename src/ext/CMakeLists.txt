@@ -171,3 +171,9 @@ add_subdirectory (glad)
 set_property (TARGET glfw PROPERTY FOLDER "ext")
 set_property (TARGET glad PROPERTY FOLDER "ext")
 
+###########################################################################
+# layerlab (A Comprehensive Framework for Rendering Layered Materials)
+
+set(LAYERLAB_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/layerlab/include PARENT_SCOPE)
+
+add_subdirectory(layerlab)
