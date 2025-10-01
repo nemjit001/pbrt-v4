@@ -1175,7 +1175,13 @@ SampledSpectrum WeidlichWilkieBxDF::f(Vector3f wo, Vector3f wi, TransportMode mo
         return {};
     }
 
-    return layers[0].f(wo, wi, mode);
+    SampledSpectrum composite{};
+    for (auto const& layer : layers) {
+        // TODO(nemjit001): Actual weidlich-wilkie eval w/ T12, a, t term
+        composite = layer.f(wo, wi, mode);
+    }
+
+    return composite;
 }
 
 PBRT_CPU_GPU
@@ -1184,7 +1190,36 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
         return {};
     }
 
-    return layers[0].Sample_f(wo, uc, u, mode, sampleFlags);
+    bool isFirst = true;
+    Vector3f wi{};
+    SampledSpectrum composite{};
+    Float pdf = 0.0;
+    BxDFFlags flags = BxDFFlags::Unset;
+    for (size_t i = 0; i < layers.size(); ++i) {
+        const auto& layer = layers[i];
+        pstd::optional<BSDFSample> sample = layer.Sample_f(wo, uc, u, mode, sampleFlags);
+
+        // Skip empty samples
+        if (!sample) {
+            continue;
+        }
+
+        // Get first layer out vector
+        if (isFirst) {
+            isFirst = false;
+            wi = sample->wi;
+        }
+
+        // Do weidlich-wilkie eval
+        // FIXME(nemjit001): Actually implement this using the recursive method from the paper :)
+        composite = sample->f;
+
+        // Update PDF & flags
+        pdf += weights[i] * sample->pdf;
+        flags |= sample->flags;
+    }
+
+    return BSDFSample(composite, wi, pdf, flags);
 }
 
 PBRT_CPU_GPU
@@ -1219,7 +1254,12 @@ void WeidlichWilkieBxDF::Regularize() {
 
 PBRT_CPU_GPU
 BxDFFlags WeidlichWilkieBxDF::Flags() const {
-    return BxDFFlags::All; // TODO(nemjit001): Check if this should be constructed from BxDF layers
+    BxDFFlags flags = BxDFFlags::Unset;
+    for (auto const& bxdf : layers) {
+        flags |= bxdf.Flags();
+    }
+
+    return flags;
 }
 
 std::string BxDF::ToString() const {
