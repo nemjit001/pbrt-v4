@@ -1,0 +1,40 @@
+{
+  "version": 8,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 12,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build/${presetName}"
+    },
+    {
+      "name": "vs22",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe"
+      },
+      "architecture": {
+        "strategy": "external",
+        "value": "x64"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "vs22-debug",
+      "configurePreset": "vs22",
+      "configuration": "Debug"
+    },
+    {
+      "name": "vs22-release",
+      "configurePreset": "vs22",
+      "configuration": "Release"
+    }
+  ]
+}
