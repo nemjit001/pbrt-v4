@@ -1160,10 +1160,12 @@ public:
     BxDFFlags Flags() const;
 
 private:
+    PBRT_CPU_GPU
     SampledSpectrum a(SampledSpectrum alpha, Float depth, Vector3f wo, Vector3f wi) const {
         return SampledSpectrum(1);
     }
 
+    PBRT_CPU_GPU
     SampledSpectrum t(Float G, SampledSpectrum T21) const { return SampledSpectrum(1 - G) + T21 * G; }
 
 private:

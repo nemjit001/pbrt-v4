@@ -625,7 +625,7 @@ WeidlichWilkieMaterial::WeidlichWilkieMaterial(FloatTexture displacement, Image*
                                                pstd::vector<Float> const& depths, pstd::vector<Spectrum> const& absorptions)
     : displacement(displacement), normalMap(normalMap), materials(materials),
       weights(weights), depths(depths), absorptions(absorptions) {
-    assert(materials.size() == weights.size()
+    CHECK(materials.size() == weights.size()
         && materials.size() == depths.size()
         && materials.size() == absorptions.size());
 

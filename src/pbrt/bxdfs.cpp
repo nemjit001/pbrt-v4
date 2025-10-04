@@ -1168,22 +1168,36 @@ WeidlichWilkieBxDF::WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF
     //
 }
 
-
 PBRT_CPU_GPU
 SampledSpectrum WeidlichWilkieBxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
     if (layers.empty()) {
         return {};
     }
 
-    SampledSpectrum composite{};
-    for (size_t i = 0; i < layers.size(); i++) {
-        Float G = 1.0;
-        SampledSpectrum T12{ 1.0 };
-        SampledSpectrum T21{ 1.0 };
-        composite = layers[i].f(wo, wi, mode) + T12 * composite * a(absorptions[i], depths[i], wo, wi) * t(G, T21);
-    }
+    std::function<SampledSpectrum(Vector3f, Vector3f, TransportMode, size_t)> const eval =
+        [&](Vector3f const wo, Vector3f const wi, TransportMode const mode, size_t const depth) -> SampledSpectrum {
+            if (depth >= layers.size()) {
+                return {};
+            }
 
-    return composite;
+            // TODO(nemjit001): Refract incoming & outgoing directions
+            // Need: IOR per layer to refract instead of 1.0
+            Normal3f const h = Normal3f(wo + wi);
+            Vector3f wo_{};
+            Vector3f wi_{};
+            if (!Refract(wo, h, 1.0, nullptr, &wo_) || !Refract(wi, h, 1.0, nullptr, &wi_)) {
+                return {}; // Early exit on failure to refract
+            }
+
+            // TODO(nemjit001): Calculate this
+            // Need: Fresnel term (based on IOR), G alpha term per layer
+            Float G = 1.0;
+            SampledSpectrum T12{1.0};
+            SampledSpectrum T21{1.0};
+            return layers[depth].f(wo, wi, mode) + T12 * eval(wo_, wi_, mode, depth + 1) * a(absorptions[depth], depths[depth], wo_, wi_) * t(G, T21);
+        };
+
+    return eval(wo, wi, mode, 0);
 }
 
 PBRT_CPU_GPU
@@ -1192,38 +1206,42 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
         return {};
     }
 
-    bool isFirst = true;
-    Vector3f wi{};
-    SampledSpectrum composite{};
-    Float pdf = 0.0;
-    BxDFFlags flags = BxDFFlags::Unset;
-    for (size_t i = 0; i < layers.size(); ++i) {
-        const auto& layer = layers[i];
-        pstd::optional<BSDFSample> sample = layer.Sample_f(wo, uc, u, mode, sampleFlags);
+    std::function<pstd::optional<BSDFSample>(Vector3f, Float, Point2f, TransportMode, BxDFReflTransFlags, size_t)> sample =
+        [&](Vector3f wo, Float uc, Point2f u, TransportMode mode, BxDFReflTransFlags flags, size_t depth) -> pstd::optional<BSDFSample> {
+            if (depth >= layers.size()) {
+                return {};
+            }
 
-        // Skip empty samples
-        if (!sample) {
-            continue;
-        }
+            // Take sample for current layer
+            auto current = layers[depth].Sample_f(wo, uc, u, mode, flags);
+            if (!current) {
+                return {};
+            }
 
-        // Get first layer out vector
-        if (isFirst) {
-            isFirst = false;
-            wi = sample->wi;
-        }
+            // Take sample for next layer
+            Vector3f wo_{};
+            Normal3f const h = Normal3f(wo + current->wi);
+            bool const refracted = Refract(wo, h, 1.0, nullptr, &wo_);
+            auto const next = sample(wo_, uc, u, mode, flags, depth + 1);
+            if (!refracted || !next) {
+                return BSDFSample{
+                    current->f,
+                    current->wi,
+                    current->pdf * weights[depth],
+                    current->flags,
+                };;
+            }
 
-        // Do weidlich-wilkie eval
-        Float G = 1.0;
-        SampledSpectrum T12{ 1.0 };
-        SampledSpectrum T21{ 1.0 };
-        composite = sample->f + T12 * composite * a(absorptions[i], depths[i], wo, wi) * t(G, T21);
+            // Calculate recursive brdf
+            Float const G = 1.0;
+            SampledSpectrum const T12{1.0};
+            SampledSpectrum const T21{1.0};
+            SampledSpectrum const f = current->f + T12 * next->f * a(absorptions[depth], depths[depth], wo_, next->wi) * t(G, T21);
+            Float const pdf = next->pdf + weights[depth] * current->pdf;
+            return BSDFSample(f, current->wi, pdf, next->flags | current->flags);
+        };
 
-        // Update PDF & flags
-        pdf += weights[i] * sample->pdf;
-        flags |= sample->flags;
-    }
-
-    return BSDFSample(composite, wi, pdf, flags);
+    return sample(wo, uc, u, mode, sampleFlags, 0);
 }
 
 PBRT_CPU_GPU
