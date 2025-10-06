@@ -21,6 +21,7 @@
 #include <pbrt/util/print.h>
 #include <pbrt/util/sampling.h>
 #include <pbrt/util/stats.h>
+#include <layer/storage.h>
 
 #include <unordered_map>
 
@@ -1125,6 +1126,37 @@ std::string MeasuredBxDF::ToString() const {
 
 std::string NormalizedFresnelBxDF::ToString() const {
     return StringPrintf("[ NormalizedFresnelBxDF eta: %f ]", eta);
+}
+
+struct LayerLabBxDFData {
+    layer::BSDFStorage *storage;
+};
+
+static LayerLabBxDFData* DataFromFile(std::string const& filename, Allocator alloc) {
+    LayerLabBxDFData* data = alloc.new_object<LayerLabBxDFData>();
+    data->storage = alloc.new_object<layer::BSDFStorage>(filename);
+    return data;
+}
+
+PBRT_CPU_GPU
+SampledSpectrum LayerLabBxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
+    return {};
+}
+
+PBRT_CPU_GPU
+pstd::optional<BSDFSample> LayerLabBxDF::Sample_f(Vector3f wo, Float uc, Point2f u,
+                                    TransportMode mode,
+                                    BxDFReflTransFlags sampleFlags) const {
+    return {};
+}
+PBRT_CPU_GPU
+Float LayerLabBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode,
+          BxDFReflTransFlags sampleFlags) const {
+    return {};
+}
+
+std::string LayerLabBxDF::ToString() const {
+    return StringPrintf("[ LayerLabBxDF ]");
 }
 
 // BxDF Method Definitions

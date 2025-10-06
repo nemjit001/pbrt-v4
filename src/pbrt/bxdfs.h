@@ -1131,6 +1131,43 @@ class NormalizedFresnelBxDF {
     Float eta;
 };
 
+struct LayerLabBxDFData;
+class LayerLabBxDF {
+public:
+    LayerLabBxDF() = default;
+    LayerLabBxDF(LayerLabBxDFData const *bsdf, SampledWavelengths const &lambda)
+        : bsdf(bsdf), lambda(lambda) {}
+
+    PBRT_CPU_GPU
+    static LayerLabBxDFData* DataFromFile(std::string const& filename);
+
+    PBRT_CPU_GPU
+    SampledSpectrum f(Vector3f wo, Vector3f wi, TransportMode mode) const;
+
+    PBRT_CPU_GPU
+    pstd::optional<BSDFSample> Sample_f(Vector3f wo, Float uc, Point2f u,
+                                        TransportMode mode,
+                                        BxDFReflTransFlags sampleFlags) const;
+    PBRT_CPU_GPU
+    Float PDF(Vector3f wo, Vector3f wi, TransportMode mode,
+              BxDFReflTransFlags sampleFlags) const;
+
+    PBRT_CPU_GPU
+    void Regularize() {}
+
+    PBRT_CPU_GPU
+    static constexpr const char *Name() { return "LayerLabBxDF"; }
+
+    std::string ToString() const;
+
+    PBRT_CPU_GPU
+    BxDFFlags Flags() const { return (BxDFFlags::Reflection | BxDFFlags::Glossy); }
+
+private:
+    LayerLabBxDFData const *bsdf;
+    SampledWavelengths lambda;
+};
+
 PBRT_CPU_GPU inline SampledSpectrum BxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
     auto f = [&](auto ptr) -> SampledSpectrum { return ptr->f(wo, wi, mode); };
     return Dispatch(f);

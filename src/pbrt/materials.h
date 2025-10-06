@@ -891,6 +891,52 @@ class MeasuredMaterial {
     const MeasuredBxDFData *brdf;
 };
 
+class LayerLabMaterial {
+public:
+    using BxDF = LayerLabBxDF;
+    using BSSRDF = void;
+
+    LayerLabMaterial(const std::string& filename, FloatTexture displacement, Image *normalMap);
+
+    static const char *Name() { return "LayerLabMaterial"; }
+
+    template <typename TextureEvaluator>
+    PBRT_CPU_GPU
+    bool CanEvaluateTextures(TextureEvaluator texEval) const {
+        return true;
+    }
+
+    template <typename TextureEvaluator>
+    PBRT_CPU_GPU
+    LayerLabBxDF GetBxDF(TextureEvaluator texEval, MaterialEvalContext ctx, SampledWavelengths &lambda) const {
+        return LayerLabBxDF(bsdf, lambda);
+    }
+
+    PBRT_CPU_GPU
+    FloatTexture GetDisplacement() const { return displacement; }
+
+    PBRT_CPU_GPU
+    const Image *GetNormalMap() const { return normalMap; }
+
+    static LayerLabMaterial *Create(
+        const TextureParameterDictionary &parameters, Image *normalMap,
+        const FileLoc *loc, Allocator alloc);
+
+    template <typename TextureEvaluator>
+    PBRT_CPU_GPU
+    void GetBSSRDF(TextureEvaluator texEval, MaterialEvalContext ctx, SampledWavelengths &lambda) const {}
+
+    PBRT_CPU_GPU
+    static constexpr bool HasSubsurfaceScattering() { return false; }
+
+    std::string ToString() const;
+
+private:
+    FloatTexture displacement;
+    Image *normalMap;
+    LayerLabBxDFData const* bsdf;
+};
+
 // Material Inline Method Definitions
 template <typename TextureEvaluator>
 inline BSDF Material::GetBSDF(TextureEvaluator texEval, MaterialEvalContext ctx,

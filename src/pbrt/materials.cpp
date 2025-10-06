@@ -620,6 +620,30 @@ MeasuredMaterial *MeasuredMaterial::Create(const TextureParameterDictionary &par
     return alloc.new_object<MeasuredMaterial>(filename, displacement, normalMap, alloc);
 }
 
+LayerLabMaterial::LayerLabMaterial(const std::string& filename, FloatTexture displacement, Image* normalMap)
+    : displacement(displacement), normalMap(normalMap) {
+    bsdf = LayerLabBxDF::DataFromFile(filename);
+}
+
+std::string LayerLabMaterial::ToString() const {
+    return StringPrintf("[ LayerLabMaterial displacement: %s normalMap: %s ]",
+                        displacement,
+                        normalMap ? normalMap->ToString() : std::string("(nullptr)"));
+}
+
+LayerLabMaterial *LayerLabMaterial::Create(
+        const TextureParameterDictionary &parameters, Image *normalMap,
+        const FileLoc *loc, Allocator alloc) {
+    std::string filename = ResolveFilename(parameters.GetOneString("filename", ""));
+    if (filename.empty()) {
+        Error("Filename must be provided for LayerLabMaterial");
+        return {};
+    }
+
+    FloatTexture displacement = parameters.GetFloatTextureOrNull("displacement", alloc);
+    return alloc.new_object<LayerLabMaterial>(filename, displacement, normalMap);
+}
+
 std::string Material::ToString() const {
     if (!ptr())
         return "(nullptr)";
@@ -679,7 +703,9 @@ Material Material::Create(const std::string &name,
                           "the \"mix\" material.", materialNames[i]);
         }
         material = MixMaterial::Create(materials, parameters, loc, alloc);
-    } else
+    } else if (name == "layerlab")
+        material = LayerLabMaterial::Create(parameters, normalMap, loc, alloc);
+    else
         ErrorExit(loc, "%s: material type unknown.", name);
 
     if (!material)
