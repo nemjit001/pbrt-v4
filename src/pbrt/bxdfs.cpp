@@ -1135,28 +1135,44 @@ struct LayerLabBxDFData {
 LayerLabBxDFData* LayerLabBxDF::DataFromFile(std::string const& filename, Allocator alloc) {
     LayerLabBxDFData* data = alloc.new_object<LayerLabBxDFData>();
     data->storage = alloc.new_object<layer::BSDFStorage>(filename);
+    CHECK(data->storage != nullptr);
     return data;
 }
 
 PBRT_CPU_GPU
 SampledSpectrum LayerLabBxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
-    layer::Color3 result = bsdf->storage->eval(0, 0, 0);
-    return {};
+    Float const mu_o = SphericalTheta(wo);
+    Float const mu_i = SphericalTheta(wi);
+    Float const phi = std::atan2(wi.y, wi.x);
+    layer::Color3 result = bsdf->storage->eval(mu_i, mu_o, phi);
+    return SampledSpectrum(result.r());
 }
 
 PBRT_CPU_GPU
 pstd::optional<BSDFSample> LayerLabBxDF::Sample_f(Vector3f wo, Float uc, Point2f u,
                                     TransportMode mode,
                                     BxDFReflTransFlags sampleFlags) const {
-    layer::Float mu_o{};
-    layer::Float phi_d{};
-    layer::Float pdf{};
-    // layer::Color3 result = bsdf->storage->sample(0, mu_o, phi_d, pdf, layer::Point2(u[0], u[1]));
-    return {};
+    if (!(sampleFlags & BxDFReflTransFlags::Reflection)) {
+        return {};
+    }
+
+    layer::Float const mu_o = SphericalTheta(wo);
+    layer::Float mu_i = 0.0;
+    layer::Float phi_d = 0.0;
+    layer::Float pdf = 0.0;
+    layer::Color3 result = bsdf->storage->sample(mu_o, mu_i, phi_d, pdf, layer::Point2(u[0], u[1]));
+
+    Vector3f const wi = SphericalDirection(std::sin(mu_i), std::cos(mu_i), phi_d);
+    SampledSpectrum const f(result.r());
+    return BSDFSample(f, wi, pdf, BxDFFlags::GlossyReflection);
 }
 PBRT_CPU_GPU
 Float LayerLabBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode,
           BxDFReflTransFlags sampleFlags) const {
+    if (!(sampleFlags & BxDFReflTransFlags::Reflection)) {
+        return 0.0;
+    }
+
     return static_cast<Float>(bsdf->storage->pdf(0, 0, 0));
 }
 
