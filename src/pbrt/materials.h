@@ -896,7 +896,7 @@ public:
     using BxDF = LayerLabBxDF;
     using BSSRDF = void;
 
-    LayerLabMaterial(const std::string& filename, FloatTexture displacement, Image *normalMap);
+    LayerLabMaterial(const std::string& filename, FloatTexture displacement, Image *normalMap, Allocator alloc);
 
     static const char *Name() { return "LayerLabMaterial"; }
 

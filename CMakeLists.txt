@@ -898,7 +898,7 @@ set (ALL_PBRT_LIBS
   glfw
   glad
   OpenGL::GL
-  layerlab
+  layerlab_static
 )
 
 if (PBRT_CUDA_ENABLED)

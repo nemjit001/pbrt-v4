@@ -174,6 +174,13 @@ set_property (TARGET glad PROPERTY FOLDER "ext")
 ###########################################################################
 # layerlab (A Comprehensive Framework for Rendering Layered Materials)
 
-set(LAYERLAB_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/layerlab/include PARENT_SCOPE)
+set(LAYERLAB_INCLUDE
+  ${CMAKE_CURRENT_SOURCE_DIR}/layerlab/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/layerlab/ext/eigen
+  ${CMAKE_CURRENT_SOURCE_DIR}/layerlab/ext/filesystem
+  ${CMAKE_CURRENT_SOURCE_DIR}/layerlab/ext/tbb
+  ${CMAKE_CURRENT_SOURCE_DIR}/layerlab/ext/tinyformat
+  PARENT_SCOPE
+)
 
 add_subdirectory(layerlab)

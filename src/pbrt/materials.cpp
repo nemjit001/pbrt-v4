@@ -620,9 +620,9 @@ MeasuredMaterial *MeasuredMaterial::Create(const TextureParameterDictionary &par
     return alloc.new_object<MeasuredMaterial>(filename, displacement, normalMap, alloc);
 }
 
-LayerLabMaterial::LayerLabMaterial(const std::string& filename, FloatTexture displacement, Image* normalMap)
+LayerLabMaterial::LayerLabMaterial(const std::string& filename, FloatTexture displacement, Image* normalMap, Allocator alloc)
     : displacement(displacement), normalMap(normalMap) {
-    bsdf = LayerLabBxDF::DataFromFile(filename);
+    bsdf = LayerLabBxDF::DataFromFile(filename, alloc);
 }
 
 std::string LayerLabMaterial::ToString() const {
@@ -641,7 +641,7 @@ LayerLabMaterial *LayerLabMaterial::Create(
     }
 
     FloatTexture displacement = parameters.GetFloatTextureOrNull("displacement", alloc);
-    return alloc.new_object<LayerLabMaterial>(filename, displacement, normalMap);
+    return alloc.new_object<LayerLabMaterial>(filename, displacement, normalMap, alloc);
 }
 
 std::string Material::ToString() const {

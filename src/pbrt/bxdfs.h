@@ -1139,7 +1139,7 @@ public:
         : bsdf(bsdf), lambda(lambda) {}
 
     PBRT_CPU_GPU
-    static LayerLabBxDFData* DataFromFile(std::string const& filename);
+    static LayerLabBxDFData* DataFromFile(std::string const& filename, Allocator alloc);
 
     PBRT_CPU_GPU
     SampledSpectrum f(Vector3f wo, Vector3f wi, TransportMode mode) const;

@@ -1132,7 +1132,7 @@ struct LayerLabBxDFData {
     layer::BSDFStorage *storage;
 };
 
-static LayerLabBxDFData* DataFromFile(std::string const& filename, Allocator alloc) {
+LayerLabBxDFData* LayerLabBxDF::DataFromFile(std::string const& filename, Allocator alloc) {
     LayerLabBxDFData* data = alloc.new_object<LayerLabBxDFData>();
     data->storage = alloc.new_object<layer::BSDFStorage>(filename);
     return data;
@@ -1140,6 +1140,7 @@ static LayerLabBxDFData* DataFromFile(std::string const& filename, Allocator all
 
 PBRT_CPU_GPU
 SampledSpectrum LayerLabBxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
+    layer::Color3 result = bsdf->storage->eval(0, 0, 0);
     return {};
 }
 
@@ -1147,12 +1148,16 @@ PBRT_CPU_GPU
 pstd::optional<BSDFSample> LayerLabBxDF::Sample_f(Vector3f wo, Float uc, Point2f u,
                                     TransportMode mode,
                                     BxDFReflTransFlags sampleFlags) const {
+    layer::Float mu_o{};
+    layer::Float phi_d{};
+    layer::Float pdf{};
+    // layer::Color3 result = bsdf->storage->sample(0, mu_o, phi_d, pdf, layer::Point2(u[0], u[1]));
     return {};
 }
 PBRT_CPU_GPU
 Float LayerLabBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode,
           BxDFReflTransFlags sampleFlags) const {
-    return {};
+    return static_cast<Float>(bsdf->storage->pdf(0, 0, 0));
 }
 
 std::string LayerLabBxDF::ToString() const {
