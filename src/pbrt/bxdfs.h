@@ -77,6 +77,16 @@ class DiffuseBxDF {
         return R ? BxDFFlags::DiffuseReflection : BxDFFlags::Unset;
     }
 
+    PBRT_CPU_GPU
+    Float Eta() const {
+        return 1.0;
+    }
+
+    PBRT_CPU_GPU
+    Float G(Vector3f wo, Vector3f wi) const {
+        return 0.0;
+    }
+
   private:
     SampledSpectrum R;
 };
@@ -158,6 +168,16 @@ class DiffuseTransmissionBxDF {
                 (T ? BxDFFlags::DiffuseTransmission : BxDFFlags::Unset));
     }
 
+    PBRT_CPU_GPU
+    Float Eta() const {
+        return 1.0;
+    }
+
+    PBRT_CPU_GPU
+    Float G(Vector3f wo, Vector3f wi) const {
+        return 0.0;
+    }
+
   private:
     // DiffuseTransmissionBxDF Private Members
     SampledSpectrum R, T;
@@ -198,6 +218,15 @@ class DielectricBxDF {
 
     PBRT_CPU_GPU
     void Regularize() { mfDistrib.Regularize(); }
+
+    Float Eta() const {
+        return eta;
+    }
+
+    PBRT_CPU_GPU
+    Float G(Vector3f wo, Vector3f wi) const {
+        return mfDistrib.G(wo, wi);
+    }
 
   private:
     // DielectricBxDF Private Members
@@ -270,6 +299,16 @@ class ThinDielectricBxDF {
     PBRT_CPU_GPU
     BxDFFlags Flags() const {
         return (BxDFFlags::Reflection | BxDFFlags::Transmission | BxDFFlags::Specular);
+    }
+
+    PBRT_CPU_GPU
+    Float Eta() const {
+        return eta;
+    }
+
+    PBRT_CPU_GPU
+    Float G(Vector3f wo, Vector3f wi) const {
+        return 0.0;
     }
 
   private:
@@ -374,6 +413,16 @@ class ConductorBxDF {
     PBRT_CPU_GPU
     void Regularize() { mfDistrib.Regularize(); }
 
+    PBRT_CPU_GPU
+    Float Eta() const {
+        return 1.0;
+    }
+
+    PBRT_CPU_GPU
+    Float G(Vector3f wo, Vector3f wi) const {
+        return mfDistrib.G(wo, wi);
+    }
+
   private:
     // ConductorBxDF Private Members
     TrowbridgeReitzDistribution mfDistrib;
@@ -421,6 +470,24 @@ class TopOrBottomBxDF {
 
     PBRT_CPU_GPU
     BxDFFlags Flags() const { return top ? top->Flags() : bottom->Flags(); }
+
+    PBRT_CPU_GPU
+    Float Eta() const {
+        return 1.0;
+    }
+
+    PBRT_CPU_GPU
+    Float G(Vector3f wo, Vector3f wi) const {
+        if (!SameHemisphere(wo, wi)) {
+            return 0.0;
+        }
+
+        if (wo.z < 0.0) {
+            return bottom ? bottom->G(wo, wi) : 0.0;
+        }
+
+        return top ? top->G(wo, wi) : 0.0;
+    }
 
   private:
     const TopBxDF *top = nullptr;
@@ -882,6 +949,24 @@ class LayeredBxDF {
         return Lerp(0.9f, 1 / (4 * Pi), pdfSum / nSamples);
     }
 
+    PBRT_CPU_GPU
+    Float Eta() const {
+        return top.Eta();
+    }
+
+    PBRT_CPU_GPU
+    Float G(Vector3f wo, Vector3f wi) const {
+        if (!SameHemisphere(wo, wi)) {
+            return 0.0;
+        }
+
+        if (wo.z < 0) {
+            return bottom.G(wo, wi);
+        }
+
+        return top.G(wo, wi);
+    }
+
   private:
     // LayeredBxDF Private Methods
     PBRT_CPU_GPU
@@ -944,6 +1029,12 @@ class HairBxDF {
 
     PBRT_CPU_GPU
     BxDFFlags Flags() const { return BxDFFlags::GlossyReflection; }
+
+    PBRT_CPU_GPU
+    Float Eta() const { return 1.0; }
+
+    PBRT_CPU_GPU
+    Float G(Vector3f wo, Vector3f wi) const { return 0.0; }
 
     PBRT_CPU_GPU
     static RGBUnboundedSpectrum SigmaAFromConcentration(Float ce, Float cp);
@@ -1052,6 +1143,12 @@ class MeasuredBxDF {
     PBRT_CPU_GPU
     BxDFFlags Flags() const { return (BxDFFlags::Reflection | BxDFFlags::Glossy); }
 
+    PBRT_CPU_GPU
+    Float Eta() const { return 1.0; }
+
+    PBRT_CPU_GPU
+    Float G(Vector3f wo, Vector3f wi) const { return 0.0; }
+
   private:
     // MeasuredBxDF Private Methods
     PBRT_CPU_GPU
@@ -1127,6 +1224,12 @@ class NormalizedFresnelBxDF {
         return f;
     }
 
+    PBRT_CPU_GPU
+    Float Eta() const { return eta; }
+
+    PBRT_CPU_GPU
+    Float G(Vector3f wo, Vector3f wi) const { return 0.0; }
+
   private:
     Float eta;
 };
@@ -1159,10 +1262,18 @@ public:
     PBRT_CPU_GPU
     BxDFFlags Flags() const;
 
+    PBRT_CPU_GPU
+    Float Eta() const { return layers[0].Eta(); }
+
+    PBRT_CPU_GPU
+    Float G(Vector3f wo, Vector3f wi) const { return layers[0].G(wo, wi); }
+
 private:
     PBRT_CPU_GPU
     SampledSpectrum a(SampledSpectrum alpha, Float depth, Vector3f wo, Vector3f wi) const {
-        return SampledSpectrum(1);
+        Float const invThetaO = 1.0 / SphericalTheta(wo);
+        Float const invThetaI = 1.0 / SphericalTheta(wi);
+        return Exp(-alpha * depth * (invThetaI + invThetaO));
     }
 
     PBRT_CPU_GPU
@@ -1204,6 +1315,16 @@ PBRT_CPU_GPU inline BxDFFlags BxDF::Flags() const {
 PBRT_CPU_GPU inline void BxDF::Regularize() {
     auto regularize = [&](auto ptr) { ptr->Regularize(); };
     return Dispatch(regularize);
+}
+
+PBRT_CPU_GPU inline Float BxDF::Eta() const {
+    auto eta = [&](auto ptr) { return ptr->Eta(); };
+    return Dispatch(eta);
+}
+
+PBRT_CPU_GPU inline Float BxDF::G(Vector3f wo, Vector3f wi) const {
+    auto g = [&](auto ptr) { return ptr->G(wo, wi); };
+    return Dispatch(g);
 }
 
 extern template class LayeredBxDF<DielectricBxDF, DiffuseBxDF, true>;

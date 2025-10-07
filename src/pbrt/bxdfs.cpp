@@ -1179,22 +1179,21 @@ SampledSpectrum WeidlichWilkieBxDF::f(Vector3f wo, Vector3f wi, TransportMode mo
             if (depth >= layers.size()) {
                 return {};
             }
+            auto const& layer = layers[depth];
 
-            // TODO(nemjit001): Refract incoming & outgoing directions
-            // Need: IOR per layer to refract instead of 1.0
             Normal3f const h = Normal3f(wo + wi);
             Vector3f wo_{};
             Vector3f wi_{};
-            if (!Refract(wo, h, 1.0, nullptr, &wo_) || !Refract(wi, h, 1.0, nullptr, &wi_)) {
+            if (!Refract(wo, h, layer.Eta(), nullptr, &wo_) || !Refract(wi, h, layer.Eta(), nullptr, &wi_)) {
                 return {}; // Early exit on failure to refract
             }
 
             // TODO(nemjit001): Calculate this
             // Need: Fresnel term (based on IOR), G alpha term per layer
-            Float G = 1.0;
+            Float G = layer.G(wo, wi);
             SampledSpectrum T12{1.0};
             SampledSpectrum T21{1.0};
-            return layers[depth].f(wo, wi, mode) + T12 * eval(wo_, wi_, mode, depth + 1) * a(absorptions[depth], depths[depth], wo_, wi_) * t(G, T21);
+            return layer.f(wo, wi, mode) + T12 * eval(wo_, wi_, mode, depth + 1) * a(absorptions[depth], depths[depth], wo_, wi_) * t(G, T21);
         };
 
     return eval(wo, wi, mode, 0);
@@ -1206,14 +1205,19 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
         return {};
     }
 
-    std::function<pstd::optional<BSDFSample>(Vector3f, Float, Point2f, TransportMode, BxDFReflTransFlags, size_t)> sample =
-        [&](Vector3f wo, Float uc, Point2f u, TransportMode mode, BxDFReflTransFlags flags, size_t depth) -> pstd::optional<BSDFSample> {
+    if (!(sampleFlags & BxDFReflTransFlags::Reflection)) {
+        return {};
+    }
+
+    std::function<pstd::optional<BSDFSample>(Vector3f, Float, Point2f, TransportMode, size_t)> sample =
+        [&](Vector3f wo, Float uc, Point2f u, TransportMode mode, size_t depth) -> pstd::optional<BSDFSample> {
             if (depth >= layers.size()) {
                 return {};
             }
+            auto const& layer = layers[depth];
 
             // Take sample for current layer
-            auto current = layers[depth].Sample_f(wo, uc, u, mode, flags);
+            auto current = layer.Sample_f(wo, uc, u, mode, BxDFReflTransFlags::Reflection);
             if (!current) {
                 return {};
             }
@@ -1221,8 +1225,8 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             // Take sample for next layer
             Vector3f wo_{};
             Normal3f const h = Normal3f(wo + current->wi);
-            bool const refracted = Refract(wo, h, 1.0, nullptr, &wo_);
-            auto const next = sample(wo_, uc, u, mode, flags, depth + 1);
+            bool const refracted = Refract(wo, h, layer.Eta(), nullptr, &wo_);
+            auto const next = sample(wo_, uc, u, mode, depth + 1);
             if (!refracted || !next) {
                 return BSDFSample{
                     current->f,
@@ -1233,7 +1237,7 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             }
 
             // Calculate recursive brdf
-            Float const G = 1.0;
+            Float const G = layer.G(wo, current->wi);
             SampledSpectrum const T12{1.0};
             SampledSpectrum const T21{1.0};
             SampledSpectrum const f = current->f + T12 * next->f * a(absorptions[depth], depths[depth], wo_, next->wi) * t(G, T21);
@@ -1241,7 +1245,7 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             return BSDFSample(f, current->wi, pdf, next->flags | current->flags);
         };
 
-    return sample(wo, uc, u, mode, sampleFlags, 0);
+    return sample(wo, uc, u, mode, 0);
 }
 
 PBRT_CPU_GPU

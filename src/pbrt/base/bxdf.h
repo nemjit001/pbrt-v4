@@ -195,6 +195,10 @@ class BxDF
                         pstd::span<const Point2f> u2) const;
 
     PBRT_CPU_GPU inline void Regularize();
+
+    PBRT_CPU_GPU inline Float Eta() const;
+
+    PBRT_CPU_GPU inline Float G(Vector3f wo, Vector3f wi) const;
 };
 
 }  // namespace pbrt
