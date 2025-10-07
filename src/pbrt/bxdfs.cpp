@@ -1144,7 +1144,7 @@ SampledSpectrum LayerLabBxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) co
     Float const mu_o = SphericalTheta(wo);
     Float const mu_i = SphericalTheta(wi);
     Float const phi = std::atan2(wi.y, wi.x);
-    layer::Color3 result = bsdf->storage->eval(mu_i, mu_o, phi);
+    layer::Color3 result = bsdf->storage->eval(mu_o, mu_i, phi);
     result = result.toSRGB();
 
     return RGBUnboundedSpectrum(*RGBColorSpace::sRGB, pbrt::RGB{ (Float)result.r(), (Float)result.g(), (Float)result.b() }).Sample(lambda);
