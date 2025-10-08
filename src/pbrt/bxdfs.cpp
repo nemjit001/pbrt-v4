@@ -1163,7 +1163,7 @@ SampledSpectrum BxDF::rho(pstd::span<const Point2f> u1, pstd::span<const Float> 
 
 WeidlichWilkieBxDF::WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers, pstd::vector<Float> weights,
                                        pstd::vector<Float> depths, pstd::vector<SampledSpectrum> absorptions)
-    : scratch(std::move(scratch)), layers(std::move(layers)), weights(std::move(weights)),
+    : scratch(std::move(scratch)), layers(std::move(layers)),
       depths(std::move(depths)), absorptions(std::move(absorptions)) {
     //
 }
@@ -1228,7 +1228,7 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             bool const refracted = Refract(wo, h, layer.Eta(), nullptr, &wo_);
             auto const next = sample(wo_, uc, u, mode, depth + 1, out_pdf);
             if (!refracted || !next) {
-                out_pdf += current->pdf * weights[depth];
+                out_pdf += current->pdf;
                 return current;
             }
 
@@ -1237,12 +1237,14 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             Float const T12 = 1.0 - Fr(wo, current->wi, layer.Eta());
             Float const T21 = 1.0 - Fr(wo_, current->wi, layer.Eta());
             SampledSpectrum const f = current->f + T12 * next->f * a(absorptions[depth], depths[depth], wo_, next->wi) * t(G, T21);
-            out_pdf += current->pdf * weights[depth];
+            out_pdf += current->pdf;
             return BSDFSample(f, current->wi, current->pdf, next->flags | current->flags);
         };
 
     Float out_pdf = 0.0;
     auto s = sample(wo, uc, u, mode, 0, out_pdf);
+    out_pdf /= layers.size();
+
     if (s) s->pdf = out_pdf; // Store tracked composite PDF
     return s;
 }
@@ -1255,9 +1257,9 @@ Float WeidlichWilkieBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDF
 
     Float compositePDF = 0.0F;
     for (size_t i = 0; i < layers.size(); i++) {
-        compositePDF += weights[i] * layers[i].PDF(wo, wi, mode, sampleFlags);
+        compositePDF += layers[i].PDF(wo, wi, mode, sampleFlags);
     }
-    return compositePDF;
+    return compositePDF / layers.size();
 }
 
 std::string WeidlichWilkieBxDF::ToString() const {

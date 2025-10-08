@@ -1288,7 +1288,6 @@ private:
 private:
     ScratchBuffer scratch; // Needed to maintain BxDF ptr lifetime
     pstd::vector<BxDF> layers;
-    pstd::vector<Float> weights;
     pstd::vector<Float> depths;
     pstd::vector<SampledSpectrum> absorptions;
 };
