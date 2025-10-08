@@ -901,7 +901,7 @@ public:
                                           const FileLoc *loc, Allocator alloc);
 
     WeidlichWilkieMaterial(FloatTexture displacement, Image *normalMap,
-                           pstd::vector<Material> const& materials, pstd::vector<Float> const& weights,
+                           pstd::vector<Material> const& materials,
                            pstd::vector<Float> const& depths, pstd::vector<Spectrum> const& absorptions);
 
     static const char *Name() { return "WeidlichWilkieMaterial"; }
@@ -932,7 +932,7 @@ public:
             sampledAbsorptions.push_back(absorptions[i].Sample(lambda));
         }
 
-        return WeidlichWilkieBxDF(scratch, bxdfs, weights, depths, sampledAbsorptions);
+        return WeidlichWilkieBxDF(scratch, bxdfs, depths, sampledAbsorptions);
     }
 
     PBRT_CPU_GPU
@@ -954,7 +954,6 @@ private:
     FloatTexture displacement;
     Image* normalMap;
     pstd::vector<Material> materials;
-    pstd::vector<Float> weights;
     pstd::vector<Float> depths;
     pstd::vector<Spectrum> absorptions;
 };

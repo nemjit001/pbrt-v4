@@ -1239,7 +1239,7 @@ public:
     WeidlichWilkieBxDF() = default;
 
     PBRT_CPU_GPU
-    WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers, pstd::vector<Float> weights,
+    WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers,
                        pstd::vector<Float> depths, pstd::vector<SampledSpectrum> absorptions);
 
     PBRT_CPU_GPU

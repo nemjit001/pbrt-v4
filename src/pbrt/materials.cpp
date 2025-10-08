@@ -621,23 +621,12 @@ MeasuredMaterial *MeasuredMaterial::Create(const TextureParameterDictionary &par
 }
 
 WeidlichWilkieMaterial::WeidlichWilkieMaterial(FloatTexture displacement, Image* normalMap,
-                                               pstd::vector<Material> const& materials, pstd::vector<Float> const& weights,
+                                               pstd::vector<Material> const& materials,
                                                pstd::vector<Float> const& depths, pstd::vector<Spectrum> const& absorptions)
     : displacement(displacement), normalMap(normalMap), materials(materials),
-      weights(weights), depths(depths), absorptions(absorptions) {
-    CHECK(materials.size() == weights.size()
-        && materials.size() == depths.size()
+      depths(depths), absorptions(absorptions) {
+    CHECK(materials.size() == depths.size()
         && materials.size() == absorptions.size());
-
-    // Normalize layer weights to ensure they add up to 1
-    Float totalWeight = 0.0F;
-    for (auto const& weight : this->weights) {
-        totalWeight += weight;
-    }
-    const Float invTotalWeight = 1.0f / totalWeight;
-    for (auto& weight : this->weights) {
-        weight *= invTotalWeight;
-    }
 }
 
 std::string WeidlichWilkieMaterial::ToString() const {
@@ -654,16 +643,14 @@ WeidlichWilkieMaterial *WeidlichWilkieMaterial::Create(const TextureParameterDic
                                                        Image *normalMap, std::map<std::string, Material> &namedMaterials,
                                                        const FileLoc *loc, Allocator alloc) {
     const std::vector<std::string> materialNames = parameters.GetStringArray("layers");
-    const std::vector<Float> layerWeights = parameters.GetFloatArray("weights");
     const std::vector<Float> layerDepths = parameters.GetFloatArray("depths");
     const std::vector<Spectrum> layerAbsorptions = parameters.GetSpectrumArray("absorptions", SpectrumType::Albedo, alloc);
 
-    if (materialNames.size() != layerWeights.size()
-        || materialNames.size() != layerDepths.size()
+    if (materialNames.size() != layerDepths.size()
         || materialNames.size() != layerAbsorptions.size()) {
         ErrorExit(loc,
-            "A Weidlich-Wilkie Material needs materials, layer-weights, depths, and absorptions to be equal in length (%d, %d, %d, %d)",
-            materialNames.size(), layerWeights.size(), layerDepths.size(), layerAbsorptions.size()
+            "A Weidlich-Wilkie Material needs materials, depths, and absorptions to be equal in length (%d, %d, %d)",
+            materialNames.size(), layerDepths.size(), layerAbsorptions.size()
         );
     }
 
@@ -682,15 +669,13 @@ WeidlichWilkieMaterial *WeidlichWilkieMaterial::Create(const TextureParameterDic
     }
 
     // Set gpu-shareable vectors
-    const pstd::vector<Float> weights(std::begin(layerWeights), std::end(layerWeights));
     const pstd::vector<Float> depths(std::begin(layerDepths), std::end(layerDepths));
     const pstd::vector<Spectrum> absorptions(std::begin(layerAbsorptions), std::end(layerAbsorptions));
 
     // Create new weidlich-wilkie material
     FloatTexture displacement = parameters.GetFloatTextureOrNull("displacement", alloc);
     return alloc.new_object<WeidlichWilkieMaterial>(
-        displacement, normalMap, materials,
-        weights, depths, absorptions);
+        displacement, normalMap, materials, depths, absorptions);
 }
 
 std::string Material::ToString() const {
