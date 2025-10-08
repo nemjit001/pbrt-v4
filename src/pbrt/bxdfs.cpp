@@ -1207,6 +1207,7 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
         return {};
     }
 
+    Float const invPDFWeight = 1.0 / layers.size();
     std::function<pstd::optional<BSDFSample>(Vector3f, Float, Point2f, TransportMode, size_t, Float&)> sample =
         [&](Vector3f wo, Float uc, Point2f u, TransportMode mode, size_t depth, Float& out_pdf) -> pstd::optional<BSDFSample> {
             if (depth >= layers.size()) {
@@ -1243,7 +1244,7 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
 
     Float out_pdf = 0.0;
     auto s = sample(wo, uc, u, mode, 0, out_pdf);
-    out_pdf /= layers.size();
+    out_pdf *= invPDFWeight;
 
     if (s) s->pdf = out_pdf; // Store tracked composite PDF
     return s;
