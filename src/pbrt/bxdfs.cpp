@@ -1161,10 +1161,10 @@ SampledSpectrum BxDF::rho(pstd::span<const Point2f> u1, pstd::span<const Float> 
     return r / (Pi * uc.size());
 }
 
-WeidlichWilkieBxDF::WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers,
-                                       pstd::vector<Float> depths, pstd::vector<SampledSpectrum> absorptions)
+WeidlichWilkieBxDF::WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers, pstd::vector<Float> depths,
+                                       pstd::vector<SampledSpectrum> absorptions, bool useMIS)
     : scratch(std::move(scratch)), layers(std::move(layers)),
-      depths(std::move(depths)), absorptions(std::move(absorptions)) {
+      depths(std::move(depths)), absorptions(std::move(absorptions)), useMIS(useMIS) {
     //
 }
 

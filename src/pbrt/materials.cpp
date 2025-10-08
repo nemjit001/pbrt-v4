@@ -621,10 +621,10 @@ MeasuredMaterial *MeasuredMaterial::Create(const TextureParameterDictionary &par
 }
 
 WeidlichWilkieMaterial::WeidlichWilkieMaterial(FloatTexture displacement, Image* normalMap,
-                                               pstd::vector<Material> const& materials,
-                                               pstd::vector<Float> const& depths, pstd::vector<Spectrum> const& absorptions)
+                                               pstd::vector<Material> const& materials, pstd::vector<Float> const& depths,
+                                               pstd::vector<Spectrum> const& absorptions, bool useMIS)
     : displacement(displacement), normalMap(normalMap), materials(materials),
-      depths(depths), absorptions(absorptions) {
+      depths(depths), absorptions(absorptions), useMIS(useMIS) {
     CHECK(materials.size() == depths.size()
         && materials.size() == absorptions.size());
 }
@@ -645,6 +645,7 @@ WeidlichWilkieMaterial *WeidlichWilkieMaterial::Create(const TextureParameterDic
     const std::vector<std::string> materialNames = parameters.GetStringArray("layers");
     const std::vector<Float> layerDepths = parameters.GetFloatArray("depths");
     const std::vector<Spectrum> layerAbsorptions = parameters.GetSpectrumArray("absorptions", SpectrumType::Albedo, alloc);
+    const bool useMIS = parameters.GetOneBool("MIS", false);
 
     if (materialNames.size() != layerDepths.size()
         || materialNames.size() != layerAbsorptions.size()) {
@@ -675,7 +676,7 @@ WeidlichWilkieMaterial *WeidlichWilkieMaterial::Create(const TextureParameterDic
     // Create new weidlich-wilkie material
     FloatTexture displacement = parameters.GetFloatTextureOrNull("displacement", alloc);
     return alloc.new_object<WeidlichWilkieMaterial>(
-        displacement, normalMap, materials, depths, absorptions);
+        displacement, normalMap, materials, depths, absorptions, useMIS);
 }
 
 std::string Material::ToString() const {

@@ -901,8 +901,8 @@ public:
                                           const FileLoc *loc, Allocator alloc);
 
     WeidlichWilkieMaterial(FloatTexture displacement, Image *normalMap,
-                           pstd::vector<Material> const& materials,
-                           pstd::vector<Float> const& depths, pstd::vector<Spectrum> const& absorptions);
+                           pstd::vector<Material> const& materials, pstd::vector<Float> const& depths,
+                           pstd::vector<Spectrum> const& absorptions, bool useMIS);
 
     static const char *Name() { return "WeidlichWilkieMaterial"; }
 
@@ -932,7 +932,7 @@ public:
             sampledAbsorptions.push_back(absorptions[i].Sample(lambda));
         }
 
-        return WeidlichWilkieBxDF(scratch, bxdfs, depths, sampledAbsorptions);
+        return WeidlichWilkieBxDF(scratch, bxdfs, depths, sampledAbsorptions, useMIS);
     }
 
     PBRT_CPU_GPU
@@ -956,6 +956,7 @@ private:
     pstd::vector<Material> materials;
     pstd::vector<Float> depths;
     pstd::vector<Spectrum> absorptions;
+    bool useMIS;
 };
 
 // Material Inline Method Definitions

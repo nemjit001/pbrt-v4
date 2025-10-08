@@ -1239,8 +1239,8 @@ public:
     WeidlichWilkieBxDF() = default;
 
     PBRT_CPU_GPU
-    WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers,
-                       pstd::vector<Float> depths, pstd::vector<SampledSpectrum> absorptions);
+    WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers, pstd::vector<Float> depths,
+                       pstd::vector<SampledSpectrum> absorptions, bool useMIS);
 
     PBRT_CPU_GPU
     SampledSpectrum f(Vector3f wo, Vector3f wi, TransportMode mode) const;
@@ -1290,6 +1290,7 @@ private:
     pstd::vector<BxDF> layers;
     pstd::vector<Float> depths;
     pstd::vector<SampledSpectrum> absorptions;
+    bool useMIS; // Enabled MIS for BxDF layers
 };
 
 PBRT_CPU_GPU inline SampledSpectrum BxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
