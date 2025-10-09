@@ -1207,11 +1207,18 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
         return {};
     }
 
+    struct MISState {
+        bool chosen = false;
+        Float pdf = 0.0;
+        Float cdf = 0.0;
+    } mis_state;
+
     Float const invPDFWeight = 1.0 / layers.size();
-    std::function<pstd::optional<BSDFSample>(Vector3f, Float, Point2f, TransportMode, size_t, Float&)> sample =
-        [&](Vector3f wo, Float uc, Point2f u, TransportMode mode, size_t depth, Float& out_pdf) -> pstd::optional<BSDFSample> {
+    std::function<pstd::optional<BSDFSample>(Vector3f, Float, Point2f, TransportMode, size_t, Float&, MISState&)> sample =
+        [&](Vector3f wo, Float uc, Point2f u, TransportMode mode, size_t depth, Float& out_pdf, MISState& mis_state) -> pstd::optional<BSDFSample> {
             if (depth >= layers.size()) {
                 out_pdf = 0.0;
+                mis_state = {};
                 return {};
             }
             auto const& layer = layers[depth];
@@ -1219,7 +1226,6 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             // Take sample for current layer
             auto current = layer.Sample_f(wo, uc, u, mode, BxDFReflTransFlags::Reflection);
             if (!current) {
-                out_pdf += 0.0;
                 return {};
             }
 
@@ -1227,9 +1233,18 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             Vector3f wo_{};
             Normal3f const h = Normal3f(wo + current->wi);
             bool const refracted = Refract(wo, h, layer.Eta(), nullptr, &wo_);
-            auto const next = sample(wo_, uc, u, mode, depth + 1, out_pdf);
+            auto const next = sample(wo_, uc, u, mode, depth + 1, out_pdf, mis_state);
+
+            // Update MIS & PDF state
+            out_pdf += current->pdf;
+            mis_state.cdf += invPDFWeight;
+            if (!mis_state.chosen && uc < mis_state.cdf) {
+                mis_state.chosen = true;
+                mis_state.pdf = invPDFWeight * current->pdf;
+            }
+
+            // Check if the next sample was valid
             if (!refracted || !next) {
-                out_pdf += current->pdf;
                 return current;
             }
 
@@ -1237,14 +1252,20 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             Float const G = layer.G(wo, current->wi);
             Float const T12 = 1.0 - Fr(wo, current->wi, layer.Eta());
             Float const T21 = 1.0 - Fr(wo_, current->wi, layer.Eta());
-            SampledSpectrum const f = current->f + T12 * next->f * a(absorptions[depth], depths[depth], wo_, next->wi) * t(G, T21);
-            out_pdf += current->pdf;
-            return BSDFSample(f, current->wi, current->pdf, next->flags | current->flags);
+            current->f = current->f + T12 * next->f * a(absorptions[depth], depths[depth], wo_, next->wi) * t(G, T21);
+            current->flags |= next->flags;
+            return current;
         };
 
     Float out_pdf = 0.0;
-    auto s = sample(wo, uc, u, mode, 0, out_pdf);
+    auto s = sample(wo, uc, u, mode, 0, out_pdf, mis_state);
     out_pdf *= invPDFWeight;
+
+    if (useMIS && s) {
+        LOG_VERBOSE("Sample: %s CDF: %.2f PDF: %.2f", s ? "yes" : "no", mis_state.cdf, out_pdf);
+        s->f *= mis_state.pdf / out_pdf; // balance heuristic from MIS
+        out_pdf = mis_state.pdf;
+    }
 
     if (s) s->pdf = out_pdf; // Store tracked composite PDF
     return s;
