@@ -1141,18 +1141,20 @@ LayerLabBxDFData* LayerLabBxDF::DataFromFile(std::string const& filename, Alloca
 
 PBRT_CPU_GPU
 pbrt::RGB RGBFromLayerLabResult(layer::Color3 const& c) {
-    Float const R = c[0];
-    Float const G = c[1];
-    Float const B = c[2];
+    layer::Color3 const values = c.toSRGB();
+    Float const R = values[0];
+    Float const G = values[1];
+    Float const B = values[2];
     return { R, G, B };
 }
 
 PBRT_CPU_GPU
 SampledSpectrum LayerLabBxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
     Float const phi_d = std::atan2(wo.y, wo.x) - std::atan2(wi.y, wi.x);
-    layer::Color3 result = bsdf->storage->eval(wo.z, wi.z, phi_d);
-
-    return SampledSpectrum(result.getLuminance());
+    layer::Color3 const result = bsdf->storage->eval(wo.z, wi.z, phi_d);
+    pbrt::RGB const rgb = RGBFromLayerLabResult(result);
+    RGBAlbedoSpectrum const spectrum(*RGBColorSpace::sRGB, rgb);
+    return spectrum.Sample(lambda);
 }
 
 PBRT_CPU_GPU
@@ -1166,11 +1168,13 @@ pstd::optional<BSDFSample> LayerLabBxDF::Sample_f(Vector3f wo, Float uc, Point2f
     layer::Float mu_i = 0.0;
     layer::Float phi_d = 0.0;
     layer::Float pdf = 0.0;
-    layer::Color3 result = bsdf->storage->sample(wo.z, mu_i, phi_d, pdf, layer::Point2(u[0], u[1]));
+    layer::Color3 const result = bsdf->storage->sample(wo.z, mu_i, phi_d, pdf, layer::Point2(u[0], u[1]));
+    pbrt::RGB const rgb = RGBFromLayerLabResult(result);
+    RGBAlbedoSpectrum const spectrum(*RGBColorSpace::sRGB, rgb);
 
     Float const phi = std::atan2(wo.y, wo.x);
     Vector3f const wi = SphericalDirection(1. - mu_i, mu_i, phi + phi_d);
-    SampledSpectrum const f = SampledSpectrum(result.getLuminance());
+    SampledSpectrum const f = spectrum.Sample(lambda);
     return BSDFSample(f, wi, pdf, BxDFFlags::GlossyReflection);
 }
 
