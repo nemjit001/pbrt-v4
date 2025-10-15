@@ -1149,8 +1149,8 @@ pbrt::RGB RGBFromLayerLabResult(layer::Color3 const& c) {
 
 PBRT_CPU_GPU
 SampledSpectrum LayerLabBxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
-    Float const phi_d = std::atan2(wi.y, wi.x);
-    layer::Color3 result = bsdf->storage->eval(SphericalTheta(wo), SphericalTheta(wi), phi_d);
+    Float const phi_d = std::atan2(wo.y, wo.x) - std::atan2(wi.y, wi.x);
+    layer::Color3 result = bsdf->storage->eval(wo.z, wi.z, phi_d);
 
     RGBUnboundedSpectrum const spectrum(*RGBColorSpace::sRGB, RGBFromLayerLabResult(result));
     return spectrum.Sample(lambda);
@@ -1169,7 +1169,8 @@ pstd::optional<BSDFSample> LayerLabBxDF::Sample_f(Vector3f wo, Float uc, Point2f
     layer::Float pdf = 0.0;
     layer::Color3 result = bsdf->storage->sample(wo.z, mu_i, phi_d, pdf, layer::Point2(u[0], u[1]));
 
-    Vector3f const wi = SphericalDirection(std::sin(mu_i), std::cos(mu_i), phi_d);
+    Float const phi = std::atan2(wo.y, wo.x);
+    Vector3f const wi = SphericalDirection(std::sin(mu_i), mu_i, phi + phi_d);
     RGBUnboundedSpectrum const spectrum(*RGBColorSpace::sRGB, RGBFromLayerLabResult(result));
     SampledSpectrum const f = spectrum.Sample(lambda);
     return BSDFSample(f, wi, pdf, BxDFFlags::GlossyReflection);
@@ -1182,8 +1183,8 @@ Float LayerLabBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode,
         return 0.0;
     }
 
-    Float const phi = std::atan2(wi.y, wi.x);
-    return static_cast<Float>(bsdf->storage->pdf(SphericalTheta(wo), SphericalTheta(wi), phi));
+    Float const phi_d = std::atan2(wo.y, wo.x) - std::atan2(wi.y, wi.x);
+    return static_cast<Float>(bsdf->storage->pdf(wo.z, wi.z, phi_d));
 }
 
 std::string LayerLabBxDF::ToString() const {
