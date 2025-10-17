@@ -1235,15 +1235,14 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             bool const refracted = Refract(wo, h, layer.Eta(), nullptr, &wo_);
             auto const next = sample(wo_, uc, u, mode, depth + 1, out_pdf, mis_state);
 
-            // Update MIS & PDF state
+            // Apply MIS
             out_pdf += current->pdf;
             mis_state.cdf += invPDFWeight;
             if (!mis_state.chosen && uc < mis_state.cdf) {
                 mis_state.chosen = true;
-                mis_state.pdf = invPDFWeight * current->pdf;
+                mis_state.pdf = current->pdf;
             }
 
-            // Check if the next sample was valid
             if (!refracted || !next) {
                 return current;
             }
@@ -1262,12 +1261,14 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
     out_pdf *= invPDFWeight;
 
     if (useMIS && s) {
-        LOG_VERBOSE("Sample: %s CDF: %.2f PDF: %.2f", s ? "yes" : "no", mis_state.cdf, out_pdf);
-        s->f *= mis_state.pdf / out_pdf; // balance heuristic from MIS
-        out_pdf = mis_state.pdf;
+        if (!mis_state.chosen) LOG_ERROR("mis cdf: %.2f uc: %.2f, pdf: %.2f", mis_state.cdf, uc, out_pdf);
+        Float const MISWeight = (invPDFWeight * mis_state.pdf) / out_pdf;
+        s->f *= MISWeight;
+        s->pdf = invPDFWeight * mis_state.pdf;
     }
-
-    if (s) s->pdf = out_pdf; // Store tracked composite PDF
+    else if (s) {
+        s->pdf = out_pdf;
+    }
     return s;
 }
 
