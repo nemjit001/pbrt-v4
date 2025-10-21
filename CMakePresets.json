@@ -23,6 +23,19 @@
         "strategy": "external",
         "value": "x64"
       }
+    },
+    {
+      "name": "clang",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.5"
+      },
+      "architecture": {
+        "strategy": "external",
+        "value": "x64"
+      }
     }
   ],
   "buildPresets": [
@@ -34,6 +47,16 @@
     {
       "name": "vs22-release",
       "configurePreset": "vs22",
+      "configuration": "Release"
+    },
+    {
+      "name": "clang-debug",
+      "configurePreset": "clang",
+      "configuration": "Debug"
+    },
+    {
+      "name": "clang-release",
+      "configurePreset": "clang",
       "configuration": "Release"
     }
   ]
