@@ -1208,17 +1208,14 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
     }
 
     struct MISState {
-        bool chosen = false;
-        Float pdf = 0.0;
         Float cdf = 0.0;
+        BSDFSample sample;
     } mis_state;
 
     Float const invPDFWeight = 1.0 / layers.size();
     std::function<pstd::optional<BSDFSample>(Vector3f, Float, Point2f, TransportMode, size_t, Float&, MISState&)> sample =
         [&](Vector3f wo, Float uc, Point2f u, TransportMode mode, size_t depth, Float& out_pdf, MISState& mis_state) -> pstd::optional<BSDFSample> {
             if (depth >= layers.size()) {
-                out_pdf = 0.0;
-                mis_state = {};
                 return {};
             }
             auto const& layer = layers[depth];
@@ -1228,6 +1225,9 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             if (!current) {
                 return {};
             }
+            out_pdf += current->pdf;
+            mis_state.cdf += invPDFWeight; // Updates MIS cdf to account for this taken sample
+            bool const is_mis_choice = uc <=  mis_state.cdf;
 
             // Take sample for next layer
             Vector3f wo_{};
@@ -1235,24 +1235,22 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             bool const refracted = Refract(wo, h, layer.Eta(), nullptr, &wo_);
             auto const next = sample(wo_, uc, u, mode, depth + 1, out_pdf, mis_state);
 
-            // Apply MIS
-            out_pdf += current->pdf;
-            mis_state.cdf += invPDFWeight;
-            if (!mis_state.chosen && uc < mis_state.cdf) {
-                mis_state.chosen = true;
-                mis_state.pdf = current->pdf;
-            }
-
-            if (!refracted || !next) {
-                return current;
-            }
-
-            // Calculate recursive brdf
+            // Calculate recursive brdf parameters
             Float const G = layer.G(wo, current->wi);
             Float const T12 = 1.0 - Fr(wo, current->wi, layer.Eta());
             Float const T21 = 1.0 - Fr(wo_, current->wi, layer.Eta());
-            current->f = current->f + T12 * next->f * a(absorptions[depth], depths[depth], wo_, next->wi) * t(G, T21);
-            current->flags |= next->flags;
+
+            // Calculate recursive BRDF value
+            if (refracted && next) {
+                current->f = current->f + T12 * next->f * a(absorptions[depth], depths[depth], wo_, next->wi) * t(G, T21);
+                current->flags |= next->flags;
+            }
+
+            // Apply MIS
+            if (is_mis_choice) {
+                mis_state.sample = *current;
+            }
+
             return current;
         };
 
@@ -1261,10 +1259,11 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
     out_pdf *= invPDFWeight;
 
     if (useMIS && s) {
-        if (!mis_state.chosen) LOG_ERROR("mis cdf: %.2f uc: %.2f, pdf: %.2f", mis_state.cdf, uc, out_pdf);
-        Float const MISWeight = (invPDFWeight * mis_state.pdf) / out_pdf;
+        Float const MISpdf = invPDFWeight * mis_state.sample.pdf;
+        Float const MISWeight = MISpdf / out_pdf;
+        // s->f = MISWeight * mis_state.sample.f;
         s->f *= MISWeight;
-        s->pdf = invPDFWeight * mis_state.pdf;
+        s->pdf = MISpdf;
     }
     else if (s) {
         s->pdf = out_pdf;
