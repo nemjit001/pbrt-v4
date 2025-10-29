@@ -1236,7 +1236,7 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             }
             out_pdf += current->pdf;
             mis_state.cdf += invPDFWeight; // Updates MIS cdf to account for this taken sample
-            bool const is_mis_choice = misRng <=  mis_state.cdf;
+            bool const is_mis_choice = misRng <= mis_state.cdf;
 
             // Take sample for next layer
             Vector3f wo_{};
@@ -1291,17 +1291,16 @@ Float WeidlichWilkieBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDF
         return std::min<Float>(rng.Uniform<Float>(), OneMinusEpsilon);
     };
 
-    Float const misRng = r();
+    Float const misRNG = r();
     Float const invPDFWeight = 1.0 / layers.size();
-    Float compositePDF = 0.0F;
     Float misCDF = 0.0;
+    Float compositePDF = 0.0F;
     for (size_t i = 0; i < layers.size(); i++) {
         misCDF += invPDFWeight;
-        if (useMIS && misRng <= misCDF) {
-            return layers[i].PDF(wo, wi, mode, sampleFlags) * invPDFWeight;
-        }
-        else {
-            compositePDF += layers[i].PDF(wo, wi, mode, sampleFlags);
+        compositePDF += layers[i].PDF(wo, wi, mode, sampleFlags);
+
+        if (useMIS && misRNG <= misCDF) {
+            return invPDFWeight * layers[i].PDF(wo, wi, mode, sampleFlags);
         }
     }
 
