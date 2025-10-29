@@ -1212,6 +1212,15 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
         BSDFSample sample;
     } mis_state;
 
+    RNG rng(Hash(GetOptions().seed, wo), Hash(uc, u));
+    auto r = [&rng]() {
+        return std::min<Float>(rng.Uniform<Float>(), OneMinusEpsilon);
+    };
+    auto r2 = [&rng, &r]() {
+        return Point2f(r(), r());
+    };
+
+    Float const misRng = r();
     Float const invPDFWeight = 1.0 / layers.size();
     std::function<pstd::optional<BSDFSample>(Vector3f, Float, Point2f, TransportMode, size_t, Float&, MISState&)> sample =
         [&](Vector3f wo, Float uc, Point2f u, TransportMode mode, size_t depth, Float& out_pdf, MISState& mis_state) -> pstd::optional<BSDFSample> {
@@ -1221,13 +1230,13 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             auto const& layer = layers[depth];
 
             // Take sample for current layer
-            auto current = layer.Sample_f(wo, uc, u, mode, BxDFReflTransFlags::Reflection);
+            auto current = layer.Sample_f(wo, r(), r2(), mode, BxDFReflTransFlags::Reflection);
             if (!current) {
                 return {};
             }
             out_pdf += current->pdf;
             mis_state.cdf += invPDFWeight; // Updates MIS cdf to account for this taken sample
-            bool const is_mis_choice = uc <=  mis_state.cdf;
+            bool const is_mis_choice = misRng <=  mis_state.cdf;
 
             // Take sample for next layer
             Vector3f wo_{};
@@ -1277,11 +1286,26 @@ Float WeidlichWilkieBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDF
         return 0.0;
     }
 
+    RNG rng(Hash(GetOptions().seed, wi), Hash(wo));
+    auto r = [&rng]() {
+        return std::min<Float>(rng.Uniform<Float>(), OneMinusEpsilon);
+    };
+
+    Float const misRng = r();
+    Float const invPDFWeight = 1.0 / layers.size();
     Float compositePDF = 0.0F;
+    Float misCDF = 0.0;
     for (size_t i = 0; i < layers.size(); i++) {
-        compositePDF += layers[i].PDF(wo, wi, mode, sampleFlags);
+        misCDF += invPDFWeight;
+        if (useMIS && misRng <= misCDF) {
+            return layers[i].PDF(wo, wi, mode, sampleFlags) * invPDFWeight;
+        }
+        else {
+            compositePDF += layers[i].PDF(wo, wi, mode, sampleFlags);
+        }
     }
-    return compositePDF / layers.size();
+
+    return invPDFWeight * compositePDF;
 }
 
 std::string WeidlichWilkieBxDF::ToString() const {
