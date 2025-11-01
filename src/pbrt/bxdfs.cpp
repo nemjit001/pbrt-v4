@@ -1170,12 +1170,12 @@ WeidlichWilkieBxDF::WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF
 
 PBRT_CPU_GPU
 SampledSpectrum WeidlichWilkieBxDF::f(Vector3f wo, Vector3f wi, TransportMode mode) const {
-    if (layers.empty()) {
+    if (layers.empty() || !SameHemisphere(wo, wi)) {
         return {};
     }
 
-    std::function<SampledSpectrum(Vector3f, Vector3f, TransportMode, size_t)> const eval =
-        [&](Vector3f const wo, Vector3f const wi, TransportMode const mode, size_t const depth) -> SampledSpectrum {
+    std::function<SampledSpectrum(Vector3f, Vector3f, TransportMode, size_t, Float)> const eval =
+        [&](Vector3f const wo, Vector3f const wi, TransportMode const mode, size_t const depth, Float prevEta) -> SampledSpectrum {
             if (depth >= layers.size()) {
                 return {};
             }
@@ -1184,17 +1184,18 @@ SampledSpectrum WeidlichWilkieBxDF::f(Vector3f wo, Vector3f wi, TransportMode mo
             Normal3f const h = Normal3f(wo + wi);
             Vector3f wo_{};
             Vector3f wi_{};
-            if (!Refract(wo, h, layer.Eta(), nullptr, &wo_) || !Refract(wi, h, layer.Eta(), nullptr, &wi_)) {
+            Float const eta = layer.Eta();
+            if (!Refract(wo, h, eta, nullptr, &wo_) || !Refract(wi, h, eta, nullptr, &wi_)) {
                 return {}; // Early exit on failure to refract
             }
 
             Float G = layer.G(wo, wi);
-            Float const T12 = 1.0 - Fr(wo, wi, layer.Eta());
-            Float const T21 = 1.0 - Fr(wo_, wi, layer.Eta());
-            return layer.f(wo, wi, mode) + T12 * eval(wo_, wi_, mode, depth + 1) * a(absorptions[depth], depths[depth], wo_, wi_) * t(G, T21);
+            Float const T12 = 1.0 - Fr(wo, wi, eta);
+            Float const T21 = 1.0 - Fr(wo_, wi_, eta);
+            return layer.f(wo, wi, mode) + T12 * eval(wo_, wi_, mode, depth + 1, layer.Eta()) * a(absorptions[depth], depths[depth], wo_, wi_) * t(G, T21);
         };
 
-    return eval(wo, wi, mode, 0);
+    return eval(wo, wi, mode, 0, 1.0);
 }
 
 PBRT_CPU_GPU
@@ -1216,14 +1217,14 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
     auto r = [&rng]() {
         return std::min<Float>(rng.Uniform<Float>(), OneMinusEpsilon);
     };
-    auto r2 = [&rng, &r]() {
+    auto r2 = [&r]() {
         return Point2f(r(), r());
     };
 
     Float const misRng = r();
     Float const invPDFWeight = 1.0 / layers.size();
-    std::function<pstd::optional<BSDFSample>(Vector3f, Float, Point2f, TransportMode, size_t, Float&, MISState&)> sample =
-        [&](Vector3f wo, Float uc, Point2f u, TransportMode mode, size_t depth, Float& out_pdf, MISState& mis_state) -> pstd::optional<BSDFSample> {
+    std::function<pstd::optional<BSDFSample>(Vector3f, Float, Point2f, TransportMode, size_t, Float, Float&, MISState&)> sample =
+        [&](Vector3f wo, Float uc, Point2f u, TransportMode mode, size_t depth, Float prevEta, Float& out_pdf, MISState& mis_state) -> pstd::optional<BSDFSample> {
             if (depth >= layers.size()) {
                 return {};
             }
@@ -1234,24 +1235,26 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             if (!current) {
                 return {};
             }
-            out_pdf += current->pdf;
+            out_pdf += invPDFWeight * current->pdf;
             mis_state.cdf += invPDFWeight; // Updates MIS cdf to account for this taken sample
             bool const is_mis_choice = misRng <= mis_state.cdf;
 
             // Take sample for next layer
-            Vector3f wo_{};
             Normal3f const h = Normal3f(wo + current->wi);
-            bool const refracted = Refract(wo, h, layer.Eta(), nullptr, &wo_);
-            auto const next = sample(wo_, uc, u, mode, depth + 1, out_pdf, mis_state);
+            Vector3f wo_{};
+            Vector3f wi_{};
+            Float const eta = layer.Eta();
+            bool const refracted = Refract(wo, h, eta, nullptr, &wo_) && Refract(current->wi, h, eta, nullptr, &wi_);
+            auto const next = sample(wo_, uc, u, mode, depth + 1, layer.Eta(), out_pdf, mis_state);
 
             // Calculate recursive brdf parameters
             Float const G = layer.G(wo, current->wi);
-            Float const T12 = 1.0 - Fr(wo, current->wi, layer.Eta());
-            Float const T21 = 1.0 - Fr(wo_, current->wi, layer.Eta());
+            Float const T12 = 1.0 - Fr(wo, current->wi, eta);
+            Float const T21 = 1.0 - Fr(wo_, wi_, eta);
 
             // Calculate recursive BRDF value
             if (refracted && next) {
-                current->f = current->f + T12 * next->f * a(absorptions[depth], depths[depth], wo_, next->wi) * t(G, T21);
+                current->f = current->f + T12 * next->f * a(absorptions[depth], depths[depth], wo_, wi_) * t(G, T21);
                 current->flags |= next->flags;
             }
 
@@ -1264,25 +1267,28 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
         };
 
     Float out_pdf = 0.0;
-    auto s = sample(wo, uc, u, mode, 0, out_pdf, mis_state);
-    out_pdf *= invPDFWeight;
+    auto s = sample(wo, uc, u, mode, 0, 1.0, out_pdf, mis_state);
 
-    if (useMIS && s) {
+    if (!s) {
+        return {};
+    }
+
+    if (useMIS) {
+        // Sets up balance heuristic for MIS
         Float const MISpdf = invPDFWeight * mis_state.sample.pdf;
         Float const MISWeight = MISpdf / out_pdf;
-        // s->f = MISWeight * mis_state.sample.f;
-        s->f *= MISWeight;
-        s->pdf = MISpdf;
+        s->f = MISWeight * s->f;
+        s->pdf = invPDFWeight * mis_state.sample.pdf;
+        return s;
     }
-    else if (s) {
-        s->pdf = out_pdf;
-    }
+
+    s->pdf = out_pdf;
     return s;
 }
 
 PBRT_CPU_GPU
 Float WeidlichWilkieBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDFReflTransFlags sampleFlags) const {
-    if (layers.empty()) {
+    if (layers.empty() || !SameHemisphere(wo, wi)) {
         return 0.0;
     }
 
@@ -1291,20 +1297,26 @@ Float WeidlichWilkieBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDF
         return std::min<Float>(rng.Uniform<Float>(), OneMinusEpsilon);
     };
 
-    Float const misRNG = r();
-    Float const invPDFWeight = 1.0 / layers.size();
-    Float misCDF = 0.0;
+    Float const invPDFWeight = 1.0 / (Float)(layers.size());
     Float compositePDF = 0.0F;
+    Float prevEta = 1.0;
     for (size_t i = 0; i < layers.size(); i++) {
-        misCDF += invPDFWeight;
-        compositePDF += layers[i].PDF(wo, wi, mode, sampleFlags);
-
-        if (useMIS && misRNG <= misCDF) {
-            return invPDFWeight * layers[i].PDF(wo, wi, mode, sampleFlags);
+        Normal3f const h = Normal3f(wo + wi);
+        Vector3f wo_{};
+        Vector3f wi_{};
+        Float const eta = layers[i].Eta();
+        prevEta = layers[i].Eta();
+        if (!Refract(wo, h, eta, nullptr, &wo_) || !Refract(wi, h, eta, nullptr, &wi_)) {
+            break;
         }
+
+        Float const layerPDF = layers[i].PDF(wo, wi, mode, sampleFlags);
+        compositePDF += invPDFWeight * layerPDF;
+        wo = wo_;
+        wi = wi_;
     }
 
-    return invPDFWeight * compositePDF;
+    return compositePDF;
 }
 
 std::string WeidlichWilkieBxDF::ToString() const {
