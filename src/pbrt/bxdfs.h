@@ -1242,6 +1242,11 @@ public:
     WeidlichWilkieBxDF(ScratchBuffer& scratch, pstd::vector<BxDF> layers, pstd::vector<Float> depths,
                        pstd::vector<SampledSpectrum> absorptions, bool useMIS);
 
+private:
+    PBRT_CPU_GPU
+    SampledSpectrum f_recursive(Vector3f wo, Vector3f wi, TransportMode mode, size_t depth) const;
+
+public:
     PBRT_CPU_GPU
     SampledSpectrum f(Vector3f wo, Vector3f wi, TransportMode mode) const;
 
