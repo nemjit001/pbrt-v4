@@ -1243,7 +1243,7 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             sample->f = f_recursive(wo, sample->wi, mode, i); // Recursive BRDF evaluation for cast sample from selected layer downwards
             sample->pdf = compositePDF;
             if (useMIS) {
-                sample->f *= (misPDF / compositePDF); // Applies balance heuristic
+                sample->f = (misPDF / compositePDF) * sample->f;
                 sample->pdf = misPDF;
             }
 
@@ -1348,6 +1348,7 @@ Float WeidlichWilkieBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDF
         Float const layerPDF = layers[i].PDF(wo, wi, mode, sampleFlags);
         compositePDF += invPDFWeight * layerPDF;
 
+#if 0
         Normal3f const h = Normal3f(wo + wi);
         Vector3f wo_{};
         Vector3f wi_{};
@@ -1357,6 +1358,7 @@ Float WeidlichWilkieBxDF::PDF(Vector3f wo, Vector3f wi, TransportMode mode, BxDF
         }
         wo = wo_;
         wi = wi_;
+#endif
     }
 
     return compositePDF;
