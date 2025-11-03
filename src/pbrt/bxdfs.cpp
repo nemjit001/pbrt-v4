@@ -1239,8 +1239,14 @@ pstd::optional<BSDFSample> WeidlichWilkieBxDF::Sample_f(Vector3f wo, Float uc, P
             }
 
             // TODO(nemjit001): Eval only layer n & n + 1?
+            Float const misPDF = invWeights * sample->pdf;
             sample->f = f_recursive(wo, sample->wi, mode, i); // Recursive BRDF evaluation for cast sample from selected layer downwards
             sample->pdf = compositePDF;
+            if (useMIS) {
+                sample->f *= (misPDF / compositePDF); // Applies balance heuristic
+                sample->pdf = misPDF;
+            }
+
             return sample;
         }
     }
