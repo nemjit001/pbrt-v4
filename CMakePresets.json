@@ -36,6 +36,13 @@
         "strategy": "external",
         "value": "x64"
       }
+    },
+    {
+      "name": "clang-double-precision",
+      "inherits": "clang",
+      "cacheVariables": {
+        "PBRT_FLOAT_AS_DOUBLE": true
+      }
     }
   ],
   "buildPresets": [
@@ -57,6 +64,11 @@
     {
       "name": "clang-release",
       "configurePreset": "clang",
+      "configuration": "Release"
+    },
+    {
+      "name": "clang-double-precision-release",
+      "configurePreset": "clang-double-precision",
       "configuration": "Release"
     }
   ]
