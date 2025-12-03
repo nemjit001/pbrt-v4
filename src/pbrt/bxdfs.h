@@ -1244,7 +1244,7 @@ public:
 
 private:
     PBRT_CPU_GPU
-    SampledSpectrum f_recursive(Vector3f wo, Vector3f wi, TransportMode mode, size_t depth) const;
+    SampledSpectrum f_recursive(Vector3f wo, Vector3f wi, TransportMode mode, Float prev_eta, size_t depth) const;
 
 public:
     PBRT_CPU_GPU
@@ -1276,13 +1276,13 @@ public:
 private:
     PBRT_CPU_GPU
     SampledSpectrum a(SampledSpectrum alpha, Float depth, Vector3f wo, Vector3f wi) const {
-        Float const invThetaO = 1.0 / SphericalTheta(wo);
-        Float const invThetaI = 1.0 / SphericalTheta(wi);
+        Float const invThetaO = 1.0 / std::max(SphericalTheta(wo), MachineEpsilon);
+        Float const invThetaI = 1.0 / std::max(SphericalTheta(-wi), MachineEpsilon);
         return Exp(-alpha * depth * (invThetaI + invThetaO));
     }
 
     PBRT_CPU_GPU
-    Float t(Float G, Float T21) const { return 1 - G + T21 * G; }
+    Float t(Float G, Float T21) const { return (1 - G) + T21 * G; }
 
     PBRT_CPU_GPU
     Float Fr(Vector3f wo, Vector3f wi, Float eta) const {
